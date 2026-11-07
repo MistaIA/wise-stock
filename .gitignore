@@ -1,0 +1,9 @@
+.env
+*.env
+!.env.example
+windows/n8n.env
+node_modules/
+vercel/.vercel/
+templates/defuddle/
+templates/.tools/
+live-check/

@@ -1,0 +1,9 @@
+{
+  "name": "stock-market-dashboard",
+  "private": true,
+  "description": "Vercel dashboard for the n8n stock-market briefs (🌙 US stock picks, NGX, BRVM, BVMAC with headlines and X posts). n8n itself runs elsewhere.",
+  "type": "module",
+  "scripts": {
+    "test": "node ../tests/vercel-api.test.mjs"
+  }
+}

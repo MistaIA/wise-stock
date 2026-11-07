@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<title>Market briefs</title>
+<meta name="description" content="🌙 US stock picks and African markets (NGX with Dangote, BRVM, BVMAC) with headlines, X posts and one share to look at per market, prepared by n8n.">
+<style>
+  :root {
+    --bg: #f6f6f3; --card: #ffffff; --text: #1c1c1a; --muted: #6a6a64; --line: #e2e2dc;
+    --up: #0b7a3e; --down: #b8382b; --accent: #2d5b4e; --chip: #eef3f0; --look: #f2f6f4;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131312; --card: #1d1d1b; --text: #ebebe7; --muted: #a2a29b; --line: #34342f;
+      --up: #45c97f; --down: #ff8170; --accent: #93c3b0; --chip: #23302b; --look: #1f2925;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header, main, footer { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  header { padding-top: 28px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.2rem; margin: 0 0 12px; }
+  h3 { font-size: 1.05rem; margin: 22px 0 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .body > div:first-of-type > h3, .body > h3:first-child { border-top: 0; padding-top: 0; }
+  .muted { color: var(--muted); }
+  .small { font-size: 0.85rem; }
+  ul.small { margin: 0.2rem 0 0.8rem; padding-left: 1.2rem; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin: 18px 0; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .pick { border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .pick .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .pick .sym { font-size: 1.25rem; font-weight: 700; }
+  .score { font-weight: 700; color: var(--accent); white-space: nowrap; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { background: var(--chip); border-radius: 999px; padding: 2px 9px; font-size: 0.82rem; }
+  .up { color: var(--up); }
+  .down { color: var(--down); }
+  .look { background: var(--look); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
+  .look .sym { font-weight: 700; font-size: 1.1rem; }
+  .look p { margin: 4px 0 0; }
+  .feed { list-style: none; margin: 4px 0 10px; padding: 0; }
+  .feed li { padding: 3px 0; overflow-wrap: anywhere; }
+  .mood { margin: 10px 0 2px; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.name { white-space: normal; min-width: 160px; }
+  .movers { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .banner { display: block; border-radius: 10px; padding: 10px 12px; background: #fff4e5; color: #6b3d00; border: 1px solid #f3d19c; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .banner { background: #3a2a12; color: #ffd9a0; border-color: #6b4c1c; } }
+  details { margin-top: 14px; }
+  summary { cursor: pointer; color: var(--accent); }
+  .tg { white-space: pre-wrap; border-left: 3px solid var(--line); padding: 8px 12px; margin-top: 8px; font-size: 0.92rem; overflow-wrap: anywhere; }
+  a { color: var(--accent); }
+  footer { padding-bottom: 32px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Market briefs</h1>
+  <p id="status" class="muted">Loading the latest briefs…</p>
+</header>
+<main>
+  <section id="picks" aria-labelledby="picks-h"><h2 id="picks-h">🌙 US stock picks</h2><div class="body"></div></section>
+  <section id="africa" aria-labelledby="africa-h"><h2 id="africa-h">🌍 African markets: NGX, BRVM, BVMAC</h2><div class="body"></div></section>
+</main>
+<footer>
+  <p class="muted small">Information only, not financial advice. 🌙 marks shares that pass the screen. For the US picks: debt and cash each under 30% of market cap, interest income under 5% of revenue and no excluded business, from the latest annual statements. For the African markets: business activity only (no banks or other interest-based finance, insurers, alcohol, tobacco, gambling or hotels); debt is not checked. Confirm with a screening service before investing. Mood and dots rate the headlines and X posts (by the AI when it answered, otherwise by keywords). NGX prices come from the feed behind NGX's own price list (unofficial), BRVM from brvm.org, BVMAC from its official bulletin (PDF), headlines from Google News, X posts from a Nitter mirror. Prepared by n8n; refreshed at most every 6 hours.</p>
+</footer>
+<script>
+(() => {
+  'use strict';
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const el = (tag, props = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (v === undefined || v === null || v === false) continue;
+      if (k === 'class') n.className = v; else if (k === 'text') n.textContent = v; else n.setAttribute(k, v);
+    }
+    for (const kid of kids.flat()) if (kid !== null && kid !== undefined && kid !== false) n.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    return n;
+  };
+  const num = (v) => typeof v === 'number' && isFinite(v);
+  const pct = (v, digits = 2) => {
+    if (!num(v)) return el('span', { class: 'muted', text: 'n/a' });
+    const cls = v > 0 ? 'up' : v < 0 ? 'down' : 'muted';
+    return el('span', { class: cls, text: (v > 0 ? '+' : '') + v.toFixed(digits) + '%' });
+  };
+  const ratio = (v) => (num(v) ? (v * 100).toFixed(1) + '%' : 'n/a');
+  const naira = (v) => (num(v) ? '₦' + v.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'n/a');
+  const fcfa = (v) => (num(v) ? v.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' FCFA' : 'n/a');
+  const usd = (v) => (num(v) ? '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'n/a');
+  const compact = (x) => (x >= 1e9 ? `${(x / 1e9).toFixed(1)}bn` : x >= 1e6 ? `${(x / 1e6).toFixed(1)}m` : x >= 1e3 ? `${Math.round(x / 1e3)}k` : String(Math.round(x)));
+  const safeLink = (url, text) => (/^https?:\/\/\S+$/i.test(String(url || '')) ? el('a', { href: url, rel: 'noopener noreferrer', target: '_blank', text }) : document.createTextNode(text));
+  const ago = (ts) => {
+    if (!num(ts)) return '';
+    const h = (Date.now() - ts) / 3600000;
+    const min = Math.round(h * 60);
+    return min < 60 ? `${Math.max(1, min)} min ago` : h < 47.5 ? `${Math.round(h)} h ago` : `${Math.round(h / 24)} days ago`;
+  };
+
+  // The briefs carry Telegram HTML. Only Telegram's own tags survive, links only with http(s), and every other
+  // attribute is dropped, so nothing from a headline, a post or the AI text can run in this page.
+  const TG_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'INS', 'S', 'STRIKE', 'DEL', 'A', 'CODE', 'PRE', 'BLOCKQUOTE', 'SPAN', 'TG-SPOILER']);
+  function telegramHtml(html) {
+    const doc = new DOMParser().parseFromString('<div>' + String(html || '') + '</div>', 'text/html');
+    const out = el('div', { class: 'tg' });
+    const walk = (src, dst) => {
+      for (const n of src.childNodes) {
+        if (n.nodeType === Node.TEXT_NODE) { dst.append(document.createTextNode(n.nodeValue)); continue; }
+        if (n.nodeType !== Node.ELEMENT_NODE) continue;
+        if (!TG_TAGS.has(n.tagName)) { walk(n, dst); continue; }
+        const copy = document.createElement(n.tagName === 'TG-SPOILER' ? 'span' : n.tagName.toLowerCase());
+        if (n.tagName === 'A') {
+          const href = n.getAttribute('href') || '';
+          if (/^https?:\/\//i.test(href)) { copy.setAttribute('href', href); copy.setAttribute('rel', 'noopener noreferrer'); copy.setAttribute('target', '_blank'); }
+        }
+        walk(n, copy);
+        dst.append(copy);
+      }
+    };
+    walk(doc.body.firstElementChild || doc.body, out);
+    return out;
+  }
+  const telegramDetails = (html) => (html ? el('details', {}, el('summary', { text: 'The Telegram message' }), telegramHtml(html)) : null);
+
+  function table(columns, rows) {
+    if (!rows || !rows.length) return el('p', { class: 'muted', text: 'No rows.' });
+    return el('div', { class: 'table-wrap' },
+      el('table', {},
+        el('thead', {}, el('tr', {}, columns.map((c) => el('th', { class: c.num ? 'num' : null, text: c.label })))),
+        el('tbody', {}, rows.map((r) => el('tr', {}, columns.map((c) => {
+          const v = c.value(r);
+          return el('td', { class: c.num ? 'num' : c.wide ? 'name' : null }, v instanceof Node ? v : String(v));
+        }))))));
+  }
+
+  // ---------------- 🌙 US stock picks ----------------
+  function renderPicks(box, brief) {
+    const d = brief && brief.data;
+    if (!d) {
+      box.append(el('p', { class: 'banner', text: 'The US stock picks did not come through this time (see n8n → Executions → SM-01).' }), telegramDetails(brief && brief.html) || '');
+      return;
+    }
+    const medals = ['🥇', '🥈', '🥉'];
+    box.append(el('p', { class: 'muted small' },
+      `As of ${d.asOf || 'n/a'} · checked ${d.checked ?? 'n/a'} tickers, ${d.passedCount ?? 0} passed the screen`));
+    if (!d.picks || !d.picks.length) box.append(el('p', { text: 'No ticker passed the screen today.' }));
+    else {
+      box.append(el('div', { class: 'grid' }, d.picks.map((p, i) => {
+        const c = p.checks || {};
+        const m = p.metrics || {};
+        const pe = num(m.earningsYield) && m.earningsYield > 0 ? (1 / m.earningsYield).toFixed(1) : null;
+        return el('article', { class: 'pick' },
+          el('div', { class: 'top' },
+            el('div', {}, el('span', { class: 'sym', text: `${medals[i] || '•'} ${p.symbol}` }), ' ', el('span', { class: 'muted', text: p.name || '' })),
+            el('span', { class: 'score', text: num(p.score) ? `${p.score}/100` : '' })),
+          el('div', {}, usd(p.price), ' ', pct(p.changePct), el('span', { class: 'muted small', text: p.industry ? ` · ${p.industry}` : '' })),
+          el('div', { class: 'chips' },
+            el('span', { class: 'chip', text: `debt ${ratio(c.debt && c.debt.value)} ${c.debt && c.debt.pass ? '✅' : '❌'}` }),
+            el('span', { class: 'chip', text: `cash ${ratio(c.cash && c.cash.value)} ${c.cash && c.cash.pass ? '✅' : '❌'}` }),
+            el('span', { class: 'chip', text: `interest income ${ratio(c.interestIncome && c.interestIncome.value)} ${c.interestIncome && c.interestIncome.pass ? '✅' : c.interestIncome && c.interestIncome.value == null ? '·' : '❌'}` }),
+            p.fiscalYear ? el('span', { class: 'chip', text: `FY${p.fiscalYear}` }) : null),
+          el('div', { class: 'chips' },
+            num(m.rangePosition) ? el('span', { class: 'chip', text: `at ${Math.round(m.rangePosition * 100)}% of its 52-week range` }) : null,
+            num(m.revenueGrowth) ? el('span', { class: 'chip', text: `revenue ${m.revenueGrowth >= 0 ? '+' : ''}${Math.round(m.revenueGrowth * 100)}% YoY` }) : null,
+            num(m.netMargin) ? el('span', { class: 'chip', text: `net margin ${Math.round(m.netMargin * 100)}%` }) : null,
+            pe ? el('span', { class: 'chip', text: `P/E ${pe}` }) : null));
+      })));
+    }
+    if (d.others && d.others.length) box.append(el('p', { class: 'small' }, el('b', { text: 'Also passed: ' }), d.others.map((o) => `${o.symbol} (${o.score})`).join(', ')));
+    if (d.failed && d.failed.length) {
+      box.append(el('h3', { text: 'Did not pass' }), table([
+        { label: 'Ticker', value: (r) => r.symbol },
+        { label: 'Why', wide: true, value: (r) => r.reason || (r.reasons || []).join('; ') || 'n/a' },
+      ], d.failed));
+    }
+    if (d.noData && d.noData.length) {
+      const byReason = new Map();
+      for (const n of d.noData) byReason.set(n.reason, [...(byReason.get(n.reason) || []), n.symbol]);
+      box.append(el('p', { class: 'muted small', text: 'Without data:' }),
+        el('ul', { class: 'muted small' }, [...byReason].map(([why, syms]) => el('li', {}, el('b', { text: syms.join(', ') }), `: ${why || 'no reason given'}`))));
+    }
+    const tg = telegramDetails(brief.html);
+    if (tg) box.append(tg);
+  }
+
+  // ---------------- African markets ----------------
+  // Mood and dots: the AI's rating of each headline or post (by id) when it answered, otherwise the keyword rating.
+  const rating = (v) => {
+    if (typeof v === 'number') return v > 0 ? 1 : v < 0 ? -1 : 0;
+    const s = String(v ?? '').trim().toLowerCase();
+    if (/^(\+?1\b|pos|good|bull)/.test(s)) return 1;
+    if (/^(-1\b|neg|bad|bear)/.test(s)) return -1;
+    return 0;
+  };
+  const dot = (s) => (s > 0 ? '🟢' : s < 0 ? '🔴' : '⚪');
+  function mood(ratings) {
+    const n = ratings.length;
+    if (!n) return null;
+    const good = ratings.filter((s) => s > 0).length;
+    const bad = ratings.filter((s) => s < 0).length;
+    const score = (good - bad) / n;
+    const label = score >= 0.25 ? '🟢 positive' : score <= -0.25 ? '🔴 negative' : good + bad === 0 ? '⚪ neutral' : '🟡 mixed';
+    return `${label} · ${good} good, ${bad} bad, ${n - good - bad} neutral`;
+  }
+  const MARKET_MONEY = { ngx: naira, brvm: fcfa, bvmac: fcfa };
+  const TRADED = { ngx: (v) => `₦${compact(v)} traded`, brvm: (v) => `${compact(v)} FCFA traded`, bvmac: () => '' };
+
+  function lookAt(d, key) {
+    const p = (d.picks || {})[key];
+    if (!p) {
+      return el('div', { class: 'look' }, el('b', { text: '🌙 To look at: ' }), el('span', { class: 'muted', text: `none today (no 🌙 share is rising${key === 'bvmac' ? '' : ' on good volume'})` }));
+    }
+    const bits = [];
+    if (num(p.trendPct)) bits.push(`${p.trendPct > 0 ? '+' : ''}${p.trendPct.toFixed(1)}% over ${p.trendSessions} sessions`);
+    if (num(p.value) && p.value > 0 && TRADED[key](p.value)) bits.push(TRADED[key](p.value));
+    const why = d.ai && d.ai.why && typeof d.ai.why[key] === 'string' ? d.ai.why[key].trim() : '';
+    return el('div', { class: 'look' },
+      el('div', {}, el('b', { text: '🌙 To look at: ' }), el('span', { class: 'sym', text: p.symbol }), p.name && p.name !== p.symbol ? el('span', { class: 'muted', text: ` · ${p.name}` }) : null),
+      el('div', {}, MARKET_MONEY[key](p.close), ' ', pct(p.changePct), bits.length ? el('span', { class: 'muted', text: ` · ${bits.join(' · ')}` }) : null),
+      why ? el('p', { class: 'small' }, el('i', { text: why })) : null);
+  }
+
+  function feedBlock(d, key, rate) {
+    const f = (d.feeds || {})[key] || {};
+    const hours = d.hours || { news: 72, x: 24 };
+    const xOk = d.x && d.x.state === 'ok';
+    const news = f.news || [];
+    const posts = xOk ? f.posts || [] : [];
+    const wrap = el('div', {});
+    const m = mood([...news, ...posts].map(rate));
+    if (m) wrap.append(el('p', { class: 'mood small' }, el('b', { text: '🧭 Mood: ' }), m));
+    if (news.length) {
+      wrap.append(el('ul', { class: 'feed small' }, news.map((a) => el('li', {}, `${dot(rate(a))} `, safeLink(a.link, a.title || ''), el('span', { class: 'muted', text: `${a.source ? ` · ${a.source}` : ''} · ${ago(a.ts)}` })))));
+    } else if (f.newsError) {
+      wrap.append(el('p', { class: 'muted small', text: `📰 Headlines: ${f.newsError}` }));
+    } else {
+      wrap.append(el('p', { class: 'muted small', text: `📰 No headlines in the last ${hours.news} h.` }));
+    }
+    if (xOk) {
+      if (posts.length) {
+        wrap.append(el('p', { class: 'small' }, el('b', { text: `𝕏 ${posts.length} post${posts.length === 1 ? '' : 's'}` }), ` in ${hours.x} h`));
+        wrap.append(el('ul', { class: 'feed small' }, posts.map((p) => el('li', {}, `${dot(rate(p))} `, safeLink(p.link, `@${p.user || 'unknown'}`), `: ${p.text || ''}`, el('span', { class: 'muted', text: ` · ${ago(p.ts)}` })))));
+      } else if (f.postsError) {
+        wrap.append(el('p', { class: 'muted small', text: `𝕏 ${f.postsError}` }));
+      } else {
+        wrap.append(el('p', { class: 'muted small', text: `𝕏 No posts in the last ${hours.x} h.` }));
+      }
+    }
+    return wrap;
+  }
+
+  function marketBlock(d, key, title, m, error, rate) {
+    const money = MARKET_MONEY[key];
+    const wrap = el('div', {});
+    wrap.append(el('h3', { text: title }));
+    if (error) wrap.append(el('p', { class: 'banner', text: `Source problem: ${error}` }));
+    if (m) {
+      const breadth = [m.advancers, m.decliners, m.unchanged].every(num) ? ` · ${m.advancers} up, ${m.decliners} down, ${m.unchanged} unchanged${m.notTraded ? `, ${m.notTraded} not traded` : ''}` : '';
+      wrap.append(el('p', { class: 'muted small', text: `Session ${m.session || 'n/a'} · ${m.count ?? 'n/a'} shares${breadth}` }));
+      wrap.append(lookAt(d, key));
+    }
+    wrap.append(feedBlock(d, key, rate));
+    if (!m) return wrap;
+    const cols = [
+      { label: 'Symbol', value: (r) => r.symbol + (r.screen === true ? ' 🌙' : '') },
+      { label: 'Name', wide: true, value: (r) => (r.missing ? 'not in today\'s list' : r.name || '') },
+      { label: 'Close', num: true, value: (r) => money(r.close) },
+      { label: 'Change', num: true, value: (r) => pct(r.changePct) },
+    ];
+    if (m.dangote && m.dangote.length) wrap.append(el('p', { class: 'small' }, el('b', { text: 'Dangote shares' })), table(cols, m.dangote));
+    if (m.watchlist && m.watchlist.length) wrap.append(el('p', { class: 'small' }, el('b', { text: 'Watchlist' })), table(cols, m.watchlist));
+    const movers = el('div', { class: 'movers' });
+    if (m.gainers && m.gainers.length) movers.append(el('div', {}, el('p', { class: 'small' }, el('b', { text: 'Top gainers' })), table(cols.filter((c) => c.label !== 'Name'), m.gainers)));
+    if (m.losers && m.losers.length) movers.append(el('div', {}, el('p', { class: 'small' }, el('b', { text: 'Top losers' })), table(cols.filter((c) => c.label !== 'Name'), m.losers)));
+    if (movers.childNodes.length) wrap.append(movers);
+    return wrap;
+  }
+
+  function bvmacBlock(d, b, error, rate) {
+    const wrap = el('div', {});
+    wrap.append(el('h3', { text: 'BVMAC (Central Africa, CEMAC)' }));
+    if (error) wrap.append(el('p', { class: 'banner', text: `Source problem: ${error}` }));
+    if (b) {
+      const idx = b.index && num(b.index.value) ? el('span', {}, 'All Share Index ', el('b', { text: b.index.value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }), ' ', pct(b.index.changePct)) : 'All Share Index n/a';
+      const link = b.url ? safeLink(b.url, `bulletin ${b.bulletin || ''}`.trim()) : (b.bulletin || '');
+      wrap.append(el('p', { class: 'small' }, idx, el('span', { class: 'muted' }, ' · session ', b.session || 'n/a', ' · '), link));
+      wrap.append(lookAt(d, 'bvmac'));
+    }
+    wrap.append(feedBlock(d, 'bvmac', rate));
+    if (!b) return wrap;
+    wrap.append(table([
+      { label: 'Ticker', value: (r) => r.ticker + (r.screen === true ? ' 🌙' : '') + (r.isNew ? ' 🆕' : '') },
+      { label: 'Name', wide: true, value: (r) => r.name || r.isin || '' },
+      { label: 'Close', num: true, value: (r) => fcfa(r.close) },
+      { label: 'Change', num: true, value: (r) => pct(r.changePct) },
+    ], b.equities || []));
+    if (b.unparsed && b.unparsed.length) wrap.append(el('p', { class: 'muted small', text: `Not readable in the PDF: ${b.unparsed.map((u) => u.ticker || u.isin || u).join(', ')}` }));
+    return wrap;
+  }
+
+  function renderAfrica(box, brief) {
+    const d = brief && brief.data;
+    if (!d) {
+      box.append(el('p', { class: 'banner', text: 'The African markets brief did not come through this time (see n8n → Executions → SM-02).' }), telegramDetails(brief && brief.html) || '');
+      return;
+    }
+    const errors = d.errors || {};
+    const rated = d.ai && d.ai.sentiment && typeof d.ai.sentiment === 'object' ? d.ai.sentiment : {};
+    const byAi = Object.keys(rated).length > 0;
+    const rate = (item) => (item && item.id && Object.prototype.hasOwnProperty.call(rated, item.id) ? rating(rated[item.id]) : (item && item.kw) || 0);
+    box.append(el('p', { class: 'muted small', text: `As of ${d.asOf || 'n/a'} · 🌙 = passes the screen (business activity only; debt not checked) · dots and mood rated ${byAi ? 'by the AI' : 'by keywords'}` }));
+    const insights = d.ai && Array.isArray(d.ai.insights) ? d.ai.insights.filter((t) => typeof t === 'string' && t.trim()) : [];
+    if (insights.length) box.append(el('p', { class: 'small' }, el('b', { text: '🧠 Insights' })), el('ul', { class: 'small' }, insights.map((t) => el('li', { text: t }))));
+    box.append(marketBlock(d, 'ngx', 'NGX (Nigeria)', d.ngx, errors.ngx, rate));
+    box.append(marketBlock(d, 'brvm', 'BRVM (West Africa, UEMOA)', d.brvm, errors.brvm, rate));
+    box.append(bvmacBlock(d, d.bvmac, errors.bvmac, rate));
+    if (d.x && d.x.state === 'failed') {
+      box.append(el('p', { class: 'muted small', text: `X posts: no answer from ${d.x.mirror || 'the mirror'}${d.x.error ? ` (${d.x.error})` : ''}${d.x.next ? `; the next run tries ${d.x.next}` : ''}.` }));
+    }
+    const tg = telegramDetails(brief.html);
+    if (tg) box.append(tg);
+  }
+
+  async function load() {
+    const status = $('#status');
+    try {
+      const r = await fetch('/api/brief', { headers: { accept: 'application/json' } });
+      const b = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+      if (!r.ok || b.error) throw new Error(b.error || `HTTP ${r.status}`);
+      const when = b.generatedAt ? new Date(b.generatedAt) : null;
+      status.textContent = when && !isNaN(when)
+        ? `Prepared ${when.toLocaleString('en-GB', { timeZone: 'Africa/Lagos', dateStyle: 'medium', timeStyle: 'short' })} WAT (Lagos time)`
+        : 'Prepared by n8n';
+      renderPicks($('#picks .body'), b.picks);
+      renderAfrica($('#africa .body'), b.africa);
+    } catch (e) {
+      status.replaceChildren(el('span', { class: 'banner', text: `The briefs are not available right now: ${e.message}` }));
+    }
+  }
+  load();
+})();
+</script>
+</body>
+</html>

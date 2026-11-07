@@ -1,0 +1,10 @@
+# Only workflows/, tools/first-run-setup.mjs, tools/check-sources.mjs and docker/ go into the image.
+**/node_modules
+.env
+*.env
+.git
+vercel
+windows
+templates
+tests
+src

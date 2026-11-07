@@ -1,0 +1,273 @@
+{
+ "AAPL": {
+  "profile": [
+   {
+    "symbol": "AAPL",
+    "price": 268.5,
+    "marketCap": 3980000000000.0,
+    "range": "169.21-288.62",
+    "changePercentage": 0.85,
+    "companyName": "Apple Inc.",
+    "currency": "USD",
+    "exchange": "NASDAQ",
+    "sector": "Technology",
+    "industry": "Consumer Electronics",
+    "isEtf": false,
+    "isFund": false,
+    "isActivelyTrading": true
+   }
+  ],
+  "balance": [
+   {
+    "fiscalYear": "2025",
+    "totalDebt": 112000000000.0,
+    "cashAndShortTermInvestments": 55000000000.0
+   }
+  ],
+  "income": [
+   {
+    "fiscalYear": "2025",
+    "revenue": 416000000000.0,
+    "interestIncome": 0,
+    "netIncome": 112000000000.0
+   },
+   {
+    "fiscalYear": "2024",
+    "revenue": 391000000000.0,
+    "netIncome": 93700000000.0
+   }
+  ]
+ },
+ "MSFT": {
+  "profile": [
+   {
+    "symbol": "MSFT",
+    "price": 497.1,
+    "marketCap": 3690000000000.0,
+    "range": "344.79-555.45",
+    "changePercentage": -0.4,
+    "companyName": "Microsoft Corporation",
+    "currency": "USD",
+    "exchange": "NASDAQ",
+    "sector": "Technology",
+    "industry": "Software - Infrastructure",
+    "isEtf": false,
+    "isFund": false,
+    "isActivelyTrading": true
+   }
+  ],
+  "balance": [
+   {
+    "fiscalYear": "2025",
+    "totalDebt": 60000000000.0,
+    "cashAndShortTermInvestments": 94000000000.0
+   }
+  ],
+  "income": [
+   {
+    "fiscalYear": "2025",
+    "revenue": 282000000000.0,
+    "interestIncome": 2400000000.0,
+    "netIncome": 102000000000.0
+   },
+   {
+    "fiscalYear": "2024",
+    "revenue": 245000000000.0
+   }
+  ]
+ },
+ "NVDA": {
+  "profile": [
+   {
+    "symbol": "NVDA",
+    "price": 188.2,
+    "marketCap": 4580000000000.0,
+    "range": "86.62-212.19",
+    "changePercentage": 1.2,
+    "companyName": "NVIDIA Corporation",
+    "currency": "USD",
+    "exchange": "NASDAQ",
+    "sector": "Technology",
+    "industry": "Semiconductors",
+    "isEtf": false,
+    "isFund": false,
+    "isActivelyTrading": true
+   }
+  ],
+  "balance": [
+   {
+    "fiscalYear": "2026",
+    "totalDebt": 10300000000.0,
+    "cashAndCashEquivalents": 8600000000.0,
+    "shortTermInvestments": 34000000000.0
+   }
+  ],
+  "income": [
+   {
+    "fiscalYear": "2026",
+    "revenue": 130500000000.0,
+    "interestIncome": 1790000000.0,
+    "netIncome": 72900000000.0
+   },
+   {
+    "fiscalYear": "2025",
+    "revenue": 60900000000.0
+   }
+  ]
+ },
+ "JPM": {
+  "profile": [
+   {
+    "symbol": "JPM",
+    "price": 300.0,
+    "marketCap": 820000000000.0,
+    "range": "202.16-318.01",
+    "changePercentage": 0.5,
+    "companyName": "JPMorgan Chase & Co.",
+    "currency": "USD",
+    "exchange": "NASDAQ",
+    "sector": "Financial Services",
+    "industry": "Banks - Diversified",
+    "isEtf": false,
+    "isFund": false,
+    "isActivelyTrading": true
+   }
+  ],
+  "balance": [
+   {
+    "fiscalYear": "2025",
+    "totalDebt": 450000000000.0,
+    "cashAndShortTermInvestments": 1000000000000.0
+   }
+  ],
+  "income": [
+   {
+    "fiscalYear": "2025",
+    "revenue": 280000000000.0,
+    "interestIncome": 190000000000.0,
+    "netIncome": 58000000000.0
+   }
+  ]
+ },
+ "T": {
+  "profile": [
+   {
+    "symbol": "T",
+    "price": 27.1,
+    "marketCap": 194000000000.0,
+    "range": "21.38-29.79",
+    "changePercentage": 0.5,
+    "companyName": "AT&T Inc.",
+    "currency": "USD",
+    "exchange": "NASDAQ",
+    "sector": "Communication Services",
+    "industry": "Telecommunications Services",
+    "isEtf": false,
+    "isFund": false,
+    "isActivelyTrading": true
+   }
+  ],
+  "balance": [
+   {
+    "fiscalYear": "2025",
+    "totalDebt": 139000000000.0,
+    "cashAndShortTermInvestments": 3300000000.0
+   }
+  ],
+  "income": [
+   {
+    "fiscalYear": "2025",
+    "revenue": 122000000000.0,
+    "interestIncome": 0,
+    "netIncome": 11000000000.0
+   },
+   {
+    "fiscalYear": "2024",
+    "revenue": 122000000000.0
+   }
+  ]
+ },
+ "TSLA": {
+  "profile": [
+   {
+    "symbol": "TSLA",
+    "price": 445.0,
+    "marketCap": 1480000000000.0,
+    "range": "214.25-488.54",
+    "changePercentage": 2.1,
+    "companyName": "Tesla, Inc.",
+    "currency": "USD",
+    "exchange": "NASDAQ",
+    "sector": "Consumer Cyclical",
+    "industry": "Auto - Manufacturers",
+    "isEtf": false,
+    "isFund": false,
+    "isActivelyTrading": true
+   }
+  ],
+  "balance": [
+   {
+    "fiscalYear": "2025",
+    "totalDebt": 13000000000.0,
+    "cashAndShortTermInvestments": 36600000000.0
+   }
+  ],
+  "income": [
+   {
+    "fiscalYear": "2025",
+    "revenue": 97700000000.0,
+    "netIncome": 7100000000.0
+   },
+   {
+    "fiscalYear": "2024",
+    "revenue": 96900000000.0
+   }
+  ]
+ },
+ "SPY": {
+  "profile": [
+   {
+    "symbol": "SPY",
+    "price": 670.0,
+    "marketCap": 610000000000.0,
+    "range": "481.80-689.70",
+    "changePercentage": 0.5,
+    "companyName": "SPDR S&P 500 ETF Trust",
+    "currency": "USD",
+    "exchange": "NASDAQ",
+    "sector": "Financial Services",
+    "industry": "Asset Management",
+    "isEtf": true,
+    "isFund": false,
+    "isActivelyTrading": true
+   }
+  ],
+  "balance": [],
+  "income": []
+ },
+ "AMD": {
+  "profile": {
+   "error": {
+    "message": "Payment required - perhaps check your payment details?",
+    "description": "Premium Query Parameter: 'Special Endpoint : This value set for 'symbol' is not available under your current subscription please visit our subscription page to upgrade your plan at https://site.financialmodelingprep.com/pricing-plans'"
+   }
+  },
+  "balance": {
+   "error": {
+    "message": "Payment required - perhaps check your payment details?",
+    "description": "Premium Query Parameter: 'Special Endpoint : This value set for 'symbol' is not available under your current subscription please visit our subscription page to upgrade your plan at https://site.financialmodelingprep.com/pricing-plans'"
+   }
+  },
+  "income": {
+   "error": {
+    "message": "Payment required - perhaps check your payment details?",
+    "description": "Premium Query Parameter: 'Special Endpoint : This value set for 'symbol' is not available under your current subscription please visit our subscription page to upgrade your plan at https://site.financialmodelingprep.com/pricing-plans'"
+   }
+  }
+ },
+ "XYZ": {
+  "profile": [],
+  "balance": [],
+  "income": []
+ }
+}

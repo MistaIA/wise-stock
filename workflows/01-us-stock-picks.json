@@ -1,0 +1,661 @@
+{
+  "name": "SM-01 · US stock picks → Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 30 7 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "5fb6f42d-ca3b-48a0-a898-d6ffd105a74e",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1180,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "aee74b3b-1056-49bd-a407-0d155eefa52e",
+      "name": "Called by another workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1180,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f17b99df-d6fd-45a8-adbc-4e25ff3f4a0b",
+              "name": "source",
+              "value": "schedule",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "6a6ca4bd-7e31-4b88-a489-de18bd8e8c3a",
+      "name": "Mark: schedule",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -960,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f17b99df-d6fd-45a8-adbc-4e25ff3f4a0b",
+              "name": "source",
+              "value": "subworkflow",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "5633c3ae-036c-489c-a3bc-4817ca40b0aa",
+      "name": "Mark: on demand",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -960,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c4109428-974f-44f1-ac26-b59729b9bb6e",
+              "name": "telegramChatId",
+              "value": "YOUR_TELEGRAM_CHAT_ID",
+              "type": "string"
+            },
+            {
+              "id": "c49c0b3c-e8b9-47bc-a38e-9762899aab2d",
+              "name": "universe",
+              "value": "AAPL,MSFT,NVDA,GOOGL,AMZN,META,TSLA,AMD,AVGO,ADBE",
+              "type": "string"
+            },
+            {
+              "id": "6d7e9df1-6e8d-458c-a0dc-de0e71e76873",
+              "name": "topN",
+              "value": 2,
+              "type": "number"
+            },
+            {
+              "id": "830e472f-3734-49d8-aeaf-92bd16075dd1",
+              "name": "maxDebtRatio",
+              "value": 0.3,
+              "type": "number"
+            },
+            {
+              "id": "b11655f3-a587-4516-a10e-2292ae1b4540",
+              "name": "maxCashRatio",
+              "value": 0.3,
+              "type": "number"
+            },
+            {
+              "id": "5a97cbff-c268-4bcb-acb1-b0255b8ae3d0",
+              "name": "maxInterestIncomeRatio",
+              "value": 0.05,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "ad1cd637-eaa5-484e-a3c4-01193f077d97",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -740,
+        30
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "content": "## 🌙 SM-01 · US stock picks\nWeekdays 07:30 (Africa/Lagos). Screens the `universe` tickers (business activity; debt and cash under 30% of market cap, interest income under 5% of revenue), scores the ones that pass and sends the top 2 to Telegram.\n\n**Setup:** credentials **FMP API key** (Query Auth, name `apikey`), **OpenAI**, **Telegram bot**. Put your chat id in **Config**.\n\nFree FMP plan: 250 calls/day and statements for a sample of large US tickers only; tickers outside it show as \"no data\". 3 calls per ticker per run.",
+        "width": 560,
+        "height": 300,
+        "color": 4
+      },
+      "id": "5bd11220-b9d7-462c-ad89-6c04e8ad4eee",
+      "name": "Setup note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1240,
+        -420
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// US stock picks · step 1\n// Turns the comma-separated watchlist from the Config node into one item per ticker,\n// so the FMP HTTP nodes below run once per ticker (index-aligned with this node).\nconst cfg = $('Config').first().json;\n\nconst symbols = String(cfg.universe || '')\n  .split(/[\\s,;]+/)\n  .map((s) => s.trim().toUpperCase())\n  .filter((s) => /^[A-Z][A-Z0-9.\\-]{0,9}$/.test(s));\n\nconst unique = [...new Set(symbols)];\nif (unique.length === 0) {\n  throw new Error('Config → universe is empty. List US tickers, for example \"AAPL,MSFT,NVDA\".');\n}\n\nreturn unique.map((symbol) => ({ json: { symbol } }));\n"
+      },
+      "id": "a054c09c-c2ef-4cc6-ac7c-9ab52ba44cfe",
+      "name": "Universe",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        30
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://financialmodelingprep.com/stable/profile",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "={{ $('Universe').item.json.symbol }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "raw"
+            }
+          },
+          "batching": {
+            "batch": {
+              "batchSize": 3,
+              "batchInterval": 1500
+            }
+          }
+        }
+      },
+      "id": "cdf643b3-7af0-4d75-aff0-e37f7bf8030e",
+      "name": "FMP profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -300,
+        30
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "smCredFmpKey0001",
+          "name": "FMP API key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://financialmodelingprep.com/stable/balance-sheet-statement",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "={{ $('Universe').item.json.symbol }}"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "raw"
+            }
+          },
+          "batching": {
+            "batch": {
+              "batchSize": 3,
+              "batchInterval": 1500
+            }
+          }
+        }
+      },
+      "id": "e79829c1-c8f4-44a3-a37f-a777446c6177",
+      "name": "FMP balance sheet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        30
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "smCredFmpKey0001",
+          "name": "FMP API key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://financialmodelingprep.com/stable/income-statement",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "={{ $('Universe').item.json.symbol }}"
+            },
+            {
+              "name": "limit",
+              "value": "2"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "raw"
+            }
+          },
+          "batching": {
+            "batch": {
+              "batchSize": 3,
+              "batchInterval": 1500
+            }
+          }
+        }
+      },
+      "id": "47e9eae8-e649-4f36-ae9d-7d5b5dcf3c47",
+      "name": "FMP income statement",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        140,
+        30
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "smCredFmpKey0001",
+          "name": "FMP API key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// US stock picks · step 2: the screen + a transparent \"potential\" score.\n// Deterministic on purpose: the AI only explains these numbers afterwards, it never decides who passes.\n// Inputs are index-aligned (one item per ticker): Universe, FMP profile, FMP balance sheet, FMP income statement.\nconst cfg = $('Config').first().json;\nconst universe = $('Universe').all().map((i) => i.json.symbol);\nconst profiles = $('FMP profile').all();\nconst balances = $('FMP balance sheet').all();\nconst incomes = $('FMP income statement').all();\n\nconst num = (v, d = null) => {\n  if (v === null || v === undefined || v === '') return d;\n  const n = Number(v);\n  return Number.isFinite(n) ? n : d;\n};\nconst MAX_DEBT = num(cfg.maxDebtRatio, 0.3); // interest-bearing debt < 30% of market cap\nconst MAX_CASH = num(cfg.maxCashRatio, 0.3); // interest-bearing cash/securities < 30% of market cap\nconst MAX_IMPURE = num(cfg.maxInterestIncomeRatio, 0.05); // interest income < 5% of revenue\nconst TOP_N = Math.min(5, Math.max(1, Math.round(num(cfg.topN, 2))));\n\n// Business-activity screen, the usual index-provider rules. Conservative: defence and entertainment are excluded too.\nconst EXCLUDED_SECTOR = /^financial services$/i;\nconst EXCLUDED_INDUSTRY =\n  /bank|insurance|mortgage|credit services|capital markets|asset management|financial -|brewer|winer|distill|alcohol|tobacco|gambling|casino|adult|entertainment|aerospace & defense|defen[cs]e|weapon/i;\n\n// Short, actionable reasons for the Telegram message instead of raw API errors.\nconst friendly = (text) => {\n  const t = String(text || '');\n  if (/payment required|\\b402\\b|subscription|premium|upgrade your plan/i.test(t)) return 'not in your FMP plan (the free plan covers a sample of large US tickers)';\n  if (/authoriz|\\b401\\b|\\b403\\b|forbidden|invalid api ?key/i.test(t)) return 'FMP refused the key (check the \"FMP API key\" credential)';\n  if (/too many requests|\\b429\\b|limit reach/i.test(t)) return 'FMP daily call limit reached';\n  return t.slice(0, 160) || 'request failed';\n};\n// One FMP response (HTTP node in text mode, so one item per ticker) → rows, or a reason why there are none.\n// A failed request arrives as { error: \"text\" } or { error: { message, description } }.\nfunction parseFmp(item) {\n  const j = (item && item.json) || {};\n  if (j.error) {\n    const e = j.error;\n    return { error: friendly(typeof e === 'string' ? e : [e.message, e.description].filter(Boolean).join(': ')) };\n  }\n  let body = j.raw;\n  if (typeof body === 'string') {\n    try {\n      body = JSON.parse(body);\n    } catch (e) {\n      return { error: /premium|subscription/i.test(body) ? friendly(body) : 'response was not JSON' };\n    }\n  }\n  if (body && !Array.isArray(body) && typeof body === 'object') {\n    const m = body['Error Message'] || body.error || body.message;\n    return { error: m ? friendly(m) : 'unexpected response' };\n  }\n  if (!Array.isArray(body) || body.length === 0) {\n    return { error: 'no data (ticker may be outside your FMP plan)' };\n  }\n  return { rows: body };\n}\n\nconst results = universe.map((symbol, i) => {\n  // The profile alone decides ETFs and excluded businesses, even when the statements are missing (FMP has none for ETFs).\n  const p = parseFmp(profiles[i]);\n  if (p.error) return { symbol, status: 'no-data', reason: p.error };\n  const prof = p.rows[0];\n  if (prof.isEtf || prof.isFund) return { symbol, name: prof.companyName || symbol, status: 'fail', reason: 'ETF or fund, screen the holdings instead' };\n  const sector = prof.sector || '';\n  const industry = prof.industry || '';\n  if (EXCLUDED_SECTOR.test(sector) || EXCLUDED_INDUSTRY.test(industry)) {\n    return { symbol, name: prof.companyName || symbol, sector, industry, status: 'fail', reason: `business activity: ${industry || sector}` };\n  }\n\n  const b = parseFmp(balances[i]);\n  const s = parseFmp(incomes[i]);\n  const failed = [b, s].find((r) => r.error);\n  if (failed) return { symbol, status: 'no-data', reason: failed.error };\n  const bs = b.rows[0];\n  const is0 = s.rows[0];\n  const is1 = s.rows[1];\n\n  const price = num(prof.price);\n  const marketCap = num(prof.marketCap);\n  const name = prof.companyName || symbol;\n  const range = String(prof.range || '').split('-').map((v) => num(v));\n  const low = range.length === 2 ? range[0] : null;\n  const high = range.length === 2 ? range[1] : null;\n\n  const debt = num(bs.totalDebt, 0);\n  const cash =\n    num(bs.cashAndShortTermInvestments) ?? num(bs.cashAndCashEquivalents, 0) + num(bs.shortTermInvestments, 0);\n  const revenue = num(is0.revenue);\n  const interestIncome = num(is0.interestIncome);\n  const netIncome = num(is0.netIncome);\n  const prevRevenue = is1 ? num(is1.revenue) : null;\n  const fiscalYear = is0.fiscalYear || is0.calendarYear || String(is0.date || '').slice(0, 4);\n\n  const base = { symbol, name, sector, industry, price, marketCap, changePct: num(prof.changePercentage), fiscalYear };\n\n  if (!marketCap || marketCap <= 0 || !revenue || revenue <= 0) {\n    return { ...base, status: 'no-data', reason: 'missing market cap or revenue' };\n  }\n\n  const debtRatio = debt / marketCap;\n  const cashRatio = cash / marketCap;\n  const impureRatio = interestIncome === null ? null : Math.max(0, interestIncome) / revenue;\n  const checks = {\n    debt: { value: debtRatio, limit: MAX_DEBT, pass: debtRatio < MAX_DEBT },\n    cash: { value: cashRatio, limit: MAX_CASH, pass: cashRatio < MAX_CASH },\n    interestIncome: { value: impureRatio, limit: MAX_IMPURE, pass: impureRatio === null ? true : impureRatio < MAX_IMPURE },\n  };\n  const failedChecks = Object.entries(checks).filter(([, c]) => !c.pass);\n  const pctTxt = (x) => (x === null ? 'n/a' : `${(x * 100).toFixed(1)}%`);\n  const metrics = {\n    rangePosition: low !== null && high !== null && high > low && price ? (price - low) / (high - low) : null,\n    revenueGrowth: prevRevenue && prevRevenue > 0 ? revenue / prevRevenue - 1 : null,\n    netMargin: netIncome !== null ? netIncome / revenue : null,\n    earningsYield: netIncome !== null ? netIncome / marketCap : null,\n    low,\n    high,\n  };\n  const notes = impureRatio === null ? ['interest income not reported, counted as 0'] : [];\n  if (failedChecks.length) {\n    const why = failedChecks.map(([k, c]) => `${k} ${pctTxt(c.value)} ≥ ${pctTxt(c.limit)}`).join(', ');\n    return { ...base, status: 'fail', reason: `financial ratios: ${why}`, checks, metrics };\n  }\n  return { ...base, status: 'pass', checks, metrics, notes };\n});\n\n// Rank-normalised score (0..100) among the stocks that passed. Weights are deliberately simple and visible.\nconst passed = results.filter((r) => r.status === 'pass');\nconst WEIGHTS = { rangePosition: 0.35, revenueGrowth: 0.25, netMargin: 0.2, earningsYield: 0.2 };\nfunction rankScores(key) {\n  const vals = passed.map((r) => r.metrics[key]);\n  const valid = vals.filter((v) => v !== null).sort((a, b) => a - b);\n  return vals.map((v) => {\n    if (v === null) return 0.5; // unknown → neutral\n    if (valid.length <= 1) return 1;\n    return valid.indexOf(v) / (valid.length - 1);\n  });\n}\nconst parts = Object.fromEntries(Object.keys(WEIGHTS).map((k) => [k, rankScores(k)]));\npassed.forEach((r, idx) => {\n  r.score = Math.round(100 * Object.entries(WEIGHTS).reduce((sum, [k, w]) => sum + w * parts[k][idx], 0));\n});\npassed.sort((a, b) => b.score - a.score);\nconst picks = passed.slice(0, TOP_N);\n\nconst asOf = $now.setZone('Africa/Lagos').toFormat('ccc d LLL yyyy');\nconst summary = {\n  asOf,\n  rules: { maxDebtRatio: MAX_DEBT, maxCashRatio: MAX_CASH, maxInterestIncomeRatio: MAX_IMPURE },\n  checked: results.length,\n  passedCount: passed.length,\n  failed: results.filter((r) => r.status === 'fail').map((r) => ({ symbol: r.symbol, reason: r.reason })),\n  noData: results.filter((r) => r.status === 'no-data').map((r) => ({ symbol: r.symbol, reason: r.reason })),\n  picks,\n  others: passed.slice(TOP_N).map((r) => ({ symbol: r.symbol, score: r.score })),\n};\n\n// Compact facts for the AI step (numbers only, no instructions from data sources).\nconst facts = picks.map((r) => ({\n  symbol: r.symbol,\n  name: r.name,\n  industry: r.industry,\n  score: r.score,\n  price: r.price,\n  dayChangePct: r.changePct,\n  positionIn52wRangePct: r.metrics.rangePosition === null ? null : Math.round(r.metrics.rangePosition * 100),\n  revenueGrowthPct: r.metrics.revenueGrowth === null ? null : Math.round(r.metrics.revenueGrowth * 1000) / 10,\n  netMarginPct: r.metrics.netMargin === null ? null : Math.round(r.metrics.netMargin * 1000) / 10,\n  peRatio: r.metrics.earningsYield > 0 ? Math.round(10 / r.metrics.earningsYield) / 10 : null,\n  debtToMarketCapPct: Math.round(r.checks.debt.value * 1000) / 10,\n  cashToMarketCapPct: Math.round(r.checks.cash.value * 1000) / 10,\n  interestIncomeToRevenuePct:\n    r.checks.interestIncome.value === null ? null : Math.round(r.checks.interestIncome.value * 1000) / 10,\n}));\n\nreturn [{ json: { ...summary, aiFacts: JSON.stringify(facts) } }];\n"
+      },
+      "id": "e5d7f5ea-7958-484b-aabf-1d6ff7481825",
+      "name": "Screen & score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        30
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Facts (JSON): {{ $json.aiFacts }}\n\nIn at most 70 words, explain why these stocks rank highest today, using the facts (momentum in the 52-week range, revenue growth, margin, valuation) and the main risk to watch for each.",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a careful equity analyst. These shares already passed the screen; do not judge or mention it. Rules: use only the numbers given; never invent prices, news or dates. Do not tell the reader to buy or sell. Never mention religion. No markdown, no headings, no emojis. Plain sentences only."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "d45bd042-89fe-47f6-ab04-4c93247b706e",
+      "name": "AI explains the picks",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        580,
+        30
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 500
+        }
+      },
+      "id": "fd4e70ef-4a9f-451f-a144-cd41706eb4a9",
+      "name": "OpenAI model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        250
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "smCredOpenAi0001",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// US stock picks · step 3: build the Telegram message (HTML parse mode).\n// Works with or without the AI paragraph: if the AI node failed, the numbers still go out.\nconst s = $('Screen & score').first().json;\nlet ai = '';\ntry {\n  const out = $('AI explains the picks').first().json;\n  ai = typeof out.text === 'string' && !out.error ? out.text.trim() : '';\n} catch (e) {\n  ai = '';\n}\n\nconst esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst pct = (x, d = 1) => (x === null || x === undefined ? 'n/a' : `${(x * 100).toFixed(d)}%`);\nconst signed = (x) => (x === null || x === undefined ? '' : ` (${x >= 0 ? '+' : ''}${Number(x).toFixed(2)}%)`);\nconst money = (x) =>\n  x === null || x === undefined ? 'n/a' : `$${Number(x).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;\nconst medals = ['🥇', '🥈', '🥉', '4.', '5.'];\n\nconst lines = [];\nlines.push(`🌙 <b>US stock picks</b> · ${esc(s.asOf)}`);\nlines.push(\n  `<i>Screen: debt &lt; ${pct(s.rules.maxDebtRatio, 0)} and cash &lt; ${pct(s.rules.maxCashRatio, 0)} of market cap, interest income &lt; ${pct(s.rules.maxInterestIncomeRatio, 0)} of revenue, no excluded business.</i>`,\n);\n\nconst blocks = [lines.join('\\n')];\n\nif (!s.picks || s.picks.length === 0) {\n  blocks.push('No ticker in the watchlist passed the screen today (or data was missing). See the list below.');\n} else {\n  s.picks.forEach((r, i) => {\n    const m = r.metrics || {};\n    const pe = m.earningsYield > 0 ? (1 / m.earningsYield).toFixed(1) : 'n/a';\n    const b = [];\n    b.push(`${medals[i]} <b>${esc(r.symbol)}</b> · ${esc(r.name)} · ${money(r.price)}${signed(r.changePct)}`);\n    b.push(\n      `Score <b>${r.score}/100</b> · ${m.rangePosition === null ? '52-week range n/a' : `at ${pct(m.rangePosition, 0)} of its 52-week range`}` +\n        ` · revenue ${m.revenueGrowth === null ? 'n/a' : `${m.revenueGrowth >= 0 ? '+' : ''}${pct(m.revenueGrowth, 0)} YoY`}` +\n        ` · net margin ${pct(m.netMargin, 0)} · P/E ${pe}`,\n    );\n    b.push(\n      `🌙 Screen: debt ${pct(r.checks.debt.value)} ✅ · cash ${pct(r.checks.cash.value)} ✅ · interest income ${pct(r.checks.interestIncome.value)} ✅ (FY${esc(r.fiscalYear)})`,\n    );\n    if (r.notes && r.notes.length) b.push(`<i>Note: ${esc(r.notes.join('; '))}</i>`);\n    blocks.push(b.join('\\n'));\n  });\n}\n\nconst nPicks = (s.picks || []).length;\nif (ai && nPicks) blocks.push(`🧠 <b>${nPicks === 1 ? 'Why this one' : `Why these ${nPicks}`}</b>\\n${esc(ai)}`);\n\nconst tail = [];\ntail.push(`Checked ${s.checked}: ${s.passedCount} passed, ${s.failed.length} failed, ${s.noData.length} without data.`);\nif (s.failed.length) tail.push(`❌ ${s.failed.map((f) => `${esc(f.symbol)} (${esc(f.reason)})`).join('; ')}`);\nif (s.noData.length) {\n  // Group by reason, so a bad key or a plan limit is said once instead of once per ticker.\n  const byReason = new Map();\n  s.noData.forEach((f) => byReason.set(f.reason, [...(byReason.get(f.reason) || []), f.symbol]));\n  tail.push(`⚪ ${[...byReason].map(([reason, syms]) => `${esc(syms.join(', '))}: ${esc(reason)}`).join('; ')}`);\n}\nblocks.push(tail.join('\\n'));\nblocks.push(\n  '<i>🌙 passes the screen. Information only, not financial advice. Ratios use the latest annual statements and today\\'s market cap.</i>',\n);\n\n// Telegram allows 4096 characters per message. Split on block boundaries, and inside a very long block on line\n// boundaries, so every message keeps its HTML tags balanced (each line is built with balanced tags).\nconst MAX = 3900;\nconst fit = (line) =>\n  line.length <= MAX ? line : line.replace(/<[^>]*>/g, '').slice(0, MAX - 1).replace(/&[#a-z0-9]*$/i, '') + '…';\nconst messages = [];\nlet current = '';\nconst push = (piece, sep) => {\n  if (current && current.length + sep.length + piece.length > MAX) {\n    messages.push(current);\n    current = piece;\n  } else {\n    current = current ? current + sep + piece : piece;\n  }\n};\nfor (const block of blocks) {\n  if (block.length <= MAX) push(block, '\\n\\n');\n  else block.split('\\n').map(fit).forEach((line, i) => push(line, i === 0 ? '\\n\\n' : '\\n'));\n}\nif (current) messages.push(current);\n\nreturn messages.map((text, i) => ({ json: { text, part: i + 1, parts: messages.length, data: i === 0 ? s : undefined } }));\n"
+      },
+      "id": "7a481aaf-5bfd-4bc5-ae42-a5f49787c888",
+      "name": "Compose message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        30
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fdad2ae8-2dbb-432f-a337-f94130831c64",
+              "leftValue": "={{ $('Config').first().json.source }}",
+              "rightValue": "schedule",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d7aa64cf-6ee5-41c4-a494-c4268e3246a9",
+      "name": "Scheduled run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1060,
+        30
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Config').first().json.telegramChatId }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML",
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "95f4301e-2a61-4656-a748-e196d5d4f564",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1300,
+        -60
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "smCredTelegram01",
+          "name": "Telegram bot"
+        }
+      },
+      "webhookId": "b99228df-c893-479c-a583-5c76c51e3466",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {},
+      "id": "00ecc72a-b080-470b-a67f-e0d3a10696ee",
+      "name": "Return to caller",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        140
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Mark: schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Called by another workflow": {
+      "main": [
+        [
+          {
+            "node": "Mark: on demand",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark: schedule": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark: on demand": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Universe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Universe": {
+      "main": [
+        [
+          {
+            "node": "FMP profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FMP profile": {
+      "main": [
+        [
+          {
+            "node": "FMP balance sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FMP balance sheet": {
+      "main": [
+        [
+          {
+            "node": "FMP income statement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FMP income statement": {
+      "main": [
+        [
+          {
+            "node": "Screen & score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Screen & score": {
+      "main": [
+        [
+          {
+            "node": "AI explains the picks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI explains the picks",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI explains the picks": {
+      "main": [
+        [
+          {
+            "node": "Compose message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose message": {
+      "main": [
+        [
+          {
+            "node": "Scheduled run?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scheduled run?": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return to caller",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Africa/Lagos",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "27e5a1cc-1a90-4e07-ae1a-4fd7b3eeb33f",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "smHalalPicks0001",
+  "tags": []
+}

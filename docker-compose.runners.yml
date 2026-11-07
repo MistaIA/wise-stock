@@ -1,0 +1,21 @@
+# Optional: run Code nodes in n8n's separate task-runner container. n8n 2.46.6 logs that the built-in
+# "internal" runner mode is deprecated (it still works). To use the sidecar instead:
+#   docker compose -f docker-compose.yml -f docker-compose.runners.yml up -d --build
+# Needs N8N_RUNNERS_AUTH_TOKEN (any long random string) in .env.
+services:
+  n8n:
+    environment:
+      N8N_RUNNERS_MODE: external
+      N8N_RUNNERS_BROKER_LISTEN_ADDRESS: 0.0.0.0
+      N8N_RUNNERS_AUTH_TOKEN: ${N8N_RUNNERS_AUTH_TOKEN:?set N8N_RUNNERS_AUTH_TOKEN in .env}
+
+  runners:
+    image: n8nio/runners:2.46.6
+    restart: unless-stopped
+    depends_on:
+      - n8n
+    environment:
+      N8N_RUNNERS_AUTH_TOKEN: ${N8N_RUNNERS_AUTH_TOKEN}
+      N8N_RUNNERS_TASK_BROKER_URI: http://n8n:5679
+      N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT: '15'
+      GENERIC_TIMEZONE: Africa/Lagos

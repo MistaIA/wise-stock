@@ -1,0 +1,167 @@
+[
+ {
+  "Symbol": "DANGCEM",
+  "Company2": "DANGOTE CEMENT PLC",
+  "Sector": "INDUSTRIAL GOODS",
+  "ClosePrice": 540.0,
+  "PrevClosingPrice": 530.0,
+  "Change": 10.0,
+  "PercChange": 1.89,
+  "Volume": 1250000,
+  "TradeDate": "2026-11-06T00:00:00",
+  "Value": 675000000.0,
+  "Market": "Premium Board"
+ },
+ {
+  "Symbol": "DANGSUGAR",
+  "Company2": "DANGOTE SUGAR REFINERY PLC",
+  "Sector": "CONSUMER GOODS",
+  "ClosePrice": 48.5,
+  "PrevClosingPrice": 50.0,
+  "Change": -1.5,
+  "PercChange": -3.0,
+  "Volume": 800000,
+  "TradeDate": "2026-11-06T00:00:00"
+ },
+ {
+  "Symbol": "NASCON",
+  "Company2": "NASCON ALLIED INDUSTRIES PLC",
+  "Sector": "CONSUMER GOODS",
+  "ClosePrice": 72.0,
+  "PrevClosingPrice": 72.0,
+  "Change": 0.0,
+  "PercChange": 0,
+  "Volume": 0,
+  "TradeDate": "2026-11-06T00:00:00"
+ },
+ {
+  "Symbol": "MTNN",
+  "Company2": "MTN NIGERIA COMMUNICATIONS PLC",
+  "Sector": "ICT",
+  "ClosePrice": 420.0,
+  "PrevClosingPrice": 400.0,
+  "Change": 20.0,
+  "PercChange": 5.0,
+  "Volume": 300000,
+  "TradeDate": "2026-11-06T00:00:00"
+ },
+ {
+  "Symbol": "BUACEMENT",
+  "Company2": "BUA CEMENT PLC",
+  "Sector": "INDUSTRIAL GOODS",
+  "ClosePrice": 95.0,
+  "PrevClosingPrice": 95.0,
+  "Change": 0.0,
+  "PercChange": 0,
+  "Volume": 5000,
+  "TradeDate": "2026-11-06T00:00:00"
+ },
+ {
+  "Symbol": "SEPLAT",
+  "Company2": "SEPLAT ENERGY PLC",
+  "Sector": "OIL AND GAS",
+  "ClosePrice": 5500.0,
+  "PrevClosingPrice": 5600.0,
+  "Change": -100.0,
+  "PercChange": null,
+  "Volume": 1000,
+  "TradeDate": "2026-11-06T00:00:00"
+ },
+ {
+  "Symbol": "GTCO",
+  "Company2": "GUARANTY TRUST HOLDING COMPANY PLC",
+  "Sector": "FINANCIAL SERVICES",
+  "ClosePrice": 80.0,
+  "PrevClosingPrice": 76.0,
+  "Change": 4.0,
+  "PercChange": 5.26,
+  "Volume": 9000000,
+  "TradeDate": "2026-11-06T00:00:00"
+ },
+ {
+  "Symbol": "GUINNESS",
+  "Company2": "GUINNESS NIGERIA PLC",
+  "Sector": "CONSUMER GOODS",
+  "ClosePrice": 90.0,
+  "PrevClosingPrice": 99.0,
+  "Change": -9.0,
+  "PercChange": -9.09,
+  "Volume": 20000,
+  "TradeDate": "2026-11-06T00:00:00"
+ },
+ {
+  "Symbol": "BETAGLAS",
+  "Company2": "BETA GLASS PLC",
+  "Sector": "INDUSTRIAL GOODS",
+  "ClosePrice": 120.0,
+  "PrevClosingPrice": 110.0,
+  "Change": 10.0,
+  "PercChange": 9.09,
+  "Volume": 100,
+  "TradeDate": "2026-11-06T00:00:00"
+ },
+ {
+  "Symbol": "AIICO",
+  "Company2": "AIICO INSURANCE PLC",
+  "Sector": "FINANCIAL SERVICES",
+  "ClosePrice": 1.5,
+  "PrevClosingPrice": 1.6,
+  "Change": -0.1,
+  "PercChange": -6.25,
+  "Volume": 500000,
+  "TradeDate": "2026-11-06T00:00:00"
+ },
+ {
+  "Symbol": "MTNN",
+  "Company2": "MTN NIGERIA COMMUNICATIONS PLC",
+  "Sector": "ICT",
+  "ClosePrice": 999.0,
+  "PrevClosingPrice": 1.0,
+  "Change": 998.0,
+  "PercChange": 99.0,
+  "Volume": 1,
+  "TradeDate": "2026-11-06T00:00:00"
+ },
+ {
+  "Symbol": "OLDCO",
+  "Company2": "OLD COMPANY PLC",
+  "Sector": "SERVICES",
+  "ClosePrice": 2.0,
+  "PrevClosingPrice": 2.0,
+  "Change": 0.0,
+  "PercChange": 0,
+  "Volume": 10,
+  "TradeDate": "2026-11-05T00:00:00"
+ },
+ {
+  "Symbol": "CHAMPION",
+  "Company2": "CHAMPION ",
+  "Sector": "CONSUMER GOODS",
+  "ClosePrice": 11.44,
+  "PrevClosingPrice": 11.0,
+  "Change": 0.44,
+  "PercChange": 4.0,
+  "Volume": 2000000,
+  "Value": 22880000.0,
+  "Market": "Main Board",
+  "TradeDate": "2026-11-06T00:00:00"
+ },
+ {
+  "Symbol": "JAIZBANK",
+  "Company2": "JAIZBANK [MRF]",
+  "Sector": "FINANCIAL SERVICES",
+  "ClosePrice": 3.2,
+  "PrevClosingPrice": 3.1,
+  "Change": 0.1,
+  "PercChange": 3.23,
+  "Volume": 5000000,
+  "Value": 16000000.0,
+  "Market": "NON-INTEREST FINANCE BOARD",
+  "TradeDate": "2026-11-06T00:00:00"
+ },
+ {
+  "Symbol": "",
+  "Company2": "BROKEN ROW",
+  "ClosePrice": 0
+ }
+]

@@ -1,0 +1,201 @@
+{
+  "name": "SM-04 · Market brief API (Vercel dashboard)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "market-brief",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c58ce14f-dd13-41f4-a751-ea18b7948d7a",
+      "name": "GET /webhook/market-brief",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -700,
+        30
+      ],
+      "webhookId": "39f5d81b-ca1d-4a7a-ad10-29fa79a5b147",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "smCredBriefSec01",
+          "name": "Market brief secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "smAfricaBrief001",
+          "cachedResultName": "SM-02 · Africa markets brief (NGX, BRVM, BVMAC) → Telegram"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "474b1ffe-94a4-4ac8-a176-03bbf2cb5f6f",
+      "name": "Run Africa brief",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        30
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "smHalalPicks0001",
+          "cachedResultName": "SM-01 · US stock picks → Telegram"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "b854e92d-8c60-4f45-aa9f-79fcd5a0d7e7",
+      "name": "Run stock picks",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -260,
+        30
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Market brief API · merge both sub-workflow results into one JSON answer for the Vercel dashboard.\nconst pick = (name) => {\n  try {\n    return $(name).all().map((i) => i.json);\n  } catch (e) {\n    return [];\n  }\n};\nconst africa = pick('Run Africa brief');\nconst picks = pick('Run stock picks');\nconst join = (items) => items.map((j) => j.text).filter(Boolean).join('\\n\\n');\nreturn [\n  {\n    json: {\n      generatedAt: new Date().toISOString(),\n      picks: { html: join(picks), data: (picks[0] && picks[0].data) || null },\n      africa: { html: join(africa), data: (africa[0] && africa[0].data) || null },\n    },\n  },\n];\n"
+      },
+      "id": "50508b36-9171-494c-a68c-ff035e2f7faf",
+      "name": "Build response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -40,
+        30
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "7916bb00-649f-4d9b-aa54-77a996a69911",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        180,
+        30
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔌 SM-04 · Market brief API\nThe Vercel dashboard calls `GET /webhook/market-brief` with header `X-Brief-Secret`. It runs SM-02 and SM-01 in \"return\" mode (nothing is sent to Telegram) and answers with both briefs as JSON.\n\n**Setup:** credential **Market brief secret** (Header Auth, name `X-Brief-Secret`, value = the same secret as `BRIEF_SECRET` on Vercel). Each call costs ~30 FMP calls, so the Vercel side caches for 6 hours.",
+        "width": 560,
+        "height": 280,
+        "color": 4
+      },
+      "id": "c7d5b5ee-72ad-473c-a286-b864411467c5",
+      "name": "Setup note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -760,
+        -360
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "GET /webhook/market-brief": {
+      "main": [
+        [
+          {
+            "node": "Run Africa brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Africa brief": {
+      "main": [
+        [
+          {
+            "node": "Run stock picks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run stock picks": {
+      "main": [
+        [
+          {
+            "node": "Build response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build response": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Africa/Lagos",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "6f0674c1-15e4-4a91-ae9d-5bc4e1d194ff",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "smBriefApi000001",
+  "tags": []
+}
