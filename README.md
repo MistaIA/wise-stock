@@ -71,9 +71,37 @@ The image is `n8nio/n8n:2.46.6` plus the workflows and the setup ([Dockerfile](D
 
 ### C. Railway (always on, https)
 
-1. New project → Deploy from your GitHub repo (it builds the [Dockerfile](Dockerfile); [railway.json](railway.json) sets the `/healthz` health check).
-2. Add a **Postgres 17** service, and a volume on the n8n service mounted at `/home/node/.n8n`.
-3. Variables on the n8n service: everything from [.env.example](.env.example), with `DB_TYPE=postgresdb` and the `DB_POSTGRESDB_*` values from the Postgres service, `N8N_PROXY_HOPS=1`, `N8N_WEBHOOK_URL=https://<your-service>.up.railway.app/` and `N8N_EDITOR_BASE_URL` the same. Generate `N8N_ENCRYPTION_KEY` once and never change it.
+Railway builds the [Dockerfile](Dockerfile) straight from your GitHub repo and runs it next to a Postgres database. Cost: a new account gets a $5 trial once (30 days); the Hobby plan is $5 a month, usage included up to $5.
+
+1. [railway.com](https://railway.com) → **New Project** → **Deploy from GitHub repo** → `MistaIA/wise-stock`. Railway finds the Dockerfile and builds it. This first deploy has no settings yet; step 4 replaces it.
+2. In the same project: **Create** → **Database** → **PostgreSQL**. Keep its name, `Postgres`.
+3. Click the n8n service (named after the repo) → **Settings** → **Networking** → **Generate Domain**, port **5678**. Optional, further down in **Settings** → **Deploy**: **Healthcheck Path** `/healthz`.
+4. Same service → **Variables** → **Raw Editor**. Paste this block, put your values after the `=` signs (the same keys as in `windows\n8n.env` on your PC; delete a line you have no value for), click **Update Variables**, then **Deploy**:
+
+   ```
+   PORT=5678
+   DB_TYPE=postgresdb
+   DB_POSTGRESDB_HOST=${{Postgres.PGHOST}}
+   DB_POSTGRESDB_PORT=${{Postgres.PGPORT}}
+   DB_POSTGRESDB_DATABASE=${{Postgres.PGDATABASE}}
+   DB_POSTGRESDB_USER=${{Postgres.PGUSER}}
+   DB_POSTGRESDB_PASSWORD=${{Postgres.PGPASSWORD}}
+   N8N_AUTO_PUBLISH=true
+   N8N_ENCRYPTION_KEY=
+   TELEGRAM_BOT_TOKEN=
+   TELEGRAM_CHAT_ID=
+   GEMINI_API_KEY=
+   FMP_API_KEY=
+   BRIEF_SECRET=
+   ```
+
+   - `N8N_ENCRYPTION_KEY` is new: a long random text that locks the credentials n8n saves. Make it once and never change it, for example in PowerShell: `$b=[byte[]]::new(32); [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); -join ($b | % { $_.ToString('x2') })`
+   - `BRIEF_SECRET`: the one from your PC, or a new long random text. The Vercel dashboard needs the same value.
+   - Add a line only for a key you have: `OPENAI_API_KEY=…`, `CHART_IMG_API_KEY=…` (the new chart-img key), `GEMINI_MODEL=…`.
+5. When the deploy is green, open `https://<your domain>/` and create the owner account. The service's **Deploy Logs** show the setup: `published "SM-01 …"` and so on, or why a workflow waits.
+6. Stop n8n on your PC: close its window, and if you set it to start at logon, run `powershell -NoProfile -ExecutionPolicy Bypass -File windows\start-n8n.ps1 -UnregisterAtLogon`. Two n8n with the same workflows would send every brief twice.
+
+The `${{Postgres.…}}` values link to the database. n8n's address (`N8N_WEBHOOK_URL`, `N8N_EDITOR_BASE_URL`) and `N8N_PROXY_HOPS=1` come from the domain of step 3 by themselves ([docker/entrypoint.sh](docker/entrypoint.sh)); a value you set by hand wins. `PORT=5678` tells Railway which port n8n listens on (its health check uses `PORT`). No volume is needed: everything n8n keeps is in Postgres, and the key is in `N8N_ENCRYPTION_KEY`. Railway stopped reading `railway.json` for new services (it was replaced by its "Infrastructure as Code"), so this repo has none and the health check is the setting of step 3. Every push to `main` deploys again.
 
 ## Keys
 
@@ -132,13 +160,17 @@ Run it when a brief says "Source problems today".
 
 ## Vercel dashboard
 
-Folder [vercel/](vercel/): `public/index.html` (the dashboard: the US picks, and per African market the 🌙 share to look at, mood, headlines, X posts and prices), `api/brief.js` (proxy to SM-04, cached 6 hours on Vercel's CDN, so the 250 FMP calls a day are safe) and `api/health-cron.js` (daily check that n8n is up, Telegram alert when it isn't).
+Folder [vercel/](vercel/): `public/index.html` (the dashboard: the US picks, and per African market the 🌙 share to look at, mood, headlines, X posts and prices), `api/brief.js` (proxy to SM-04, cached 6 hours on Vercel's CDN, so the 250 FMP calls a day are safe) and `api/health-cron.js` (daily check that n8n is up, Telegram alert when it isn't). The dashboard needs n8n at a public https address, so deploy n8n first (Railway, [C](#c-railway-always-on-https)).
 
-1. Vercel → Add New Project → your repo, **Root Directory `vercel`**. Or from that folder: `vercel deploy --prod`.
-2. Settings → Environment Variables ([vercel/.env.example](vercel/.env.example)): `N8N_BRIEF_URL` (`https://<n8n>/webhook/market-brief`), `BRIEF_SECRET`, `N8N_BASE_URL`, `CRON_SECRET` (any long random text), and optionally `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` for the alert. Redeploy.
-3. The cron in [vercel/vercel.json](vercel/vercel.json) runs at 06:00 UTC (07:00 in Lagos); the Hobby plan allows one run a day.
+1. [vercel.com/new](https://vercel.com/new) → import `MistaIA/wise-stock` → **Root Directory** `vercel` → Framework Preset **Other**, no build command.
+2. **Environment Variables**, before you click **Deploy** ([vercel/.env.example](vercel/.env.example)):
+   - `N8N_BASE_URL`: n8n's address, `https://<your domain>/` (the Railway domain of step C3)
+   - `BRIEF_SECRET`: the same value as `BRIEF_SECRET` on Railway
+   - `CRON_SECRET`: another long random text, for the daily check
+   - optional, for the "n8n is down" alert: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`, as on Railway
+3. **Deploy**, then open `https://<project>.vercel.app`. When the briefs are not cached yet, n8n prepares them first (both briefs, live sources): allow a minute or two. Then Vercel serves them from its cache for 6 hours.
 
-Errors are never cached and say what to fix (wrong secret, SM-04 not published, n8n not answering).
+A variable changed later only counts after a redeploy (Deployments → ⋯ → Redeploy). `vercel.json` turns on Fluid compute, so `api/brief.js` may run 300 s (the Hobby maximum) and waits up to 280 s for n8n. The daily check runs between 06:00 and 06:59 UTC (07:00 in Lagos; the Hobby plan allows one cron a day, within the hour). Errors are never cached and say what to fix (wrong secret, SM-04 not published, n8n not answering). From your PC instead: `vercel deploy --prod` in the `vercel` folder.
 
 ## Templates
 
@@ -150,11 +182,11 @@ Errors are never cached and say what to fix (wrong secret, SM-04 not published, 
 |---|---|---|
 | `node tests/run-tests.mjs` | 42 checks: the Code-node logic against samples made from the live NGX, BRVM, BVMAC, FMP and RSS answers of 6 Nov 2026 (the BOC PDF is a look-alike with that day's rows), the 🌙 screen and pick, headlines and X posts, mirror rotation, mood, the Telegram HTML, the setup's plan and publish rules, the Gemini switch, the wording | Node 22+ |
 | `N8N_NODE_MODULES=<folder>/node_modules node tests/validate-workflows.mjs` | every node type, version and parameter exists in n8n 2.46.6, in the files and in their Gemini versions | `npm i n8n@2.46.6 --ignore-scripts` in that folder |
-| `node tests/vercel-api.test.mjs` | the Vercel functions (7 checks, fake fetch) | Node 18+ |
+| `node tests/vercel-api.test.mjs` | the Vercel functions and vercel.json (9 checks, fake fetch) | Node 18+ |
 | `node tests/fetch-templates.test.mjs` | the defuddle template fetcher (7 checks, local server) | registry.npmjs.org once |
 | `N8N_PACKAGE=<folder>/node_modules/n8n node tests/check-sources.test.mjs` | the live-source check (9 checks, local server, n8n's PDF and RSS readers, retries, X mirrors) | an n8n install |
 | `node tests/e2e/run-setup-test.mjs` | the setup against the real n8n CLI over 9 starts, including the switch to Gemini and back | Docker, `docker build -t stock-market-n8n:test .` |
-| `node tests/e2e/run-docker-e2e.mjs` | real n8n + Postgres 17 + mock services: import, publish, SM-04 webhook, both briefs, a mirror that is down then the next one (remembered in Postgres, also after a restart), scheduled SM-03, the bot lock. `E2E_AI=gemini` runs it on Gemini (and the bot reads a chart through WF-11.1), `E2E_AI=none` with no AI key. | the same |
+| `node tests/e2e/run-docker-e2e.mjs` | real n8n + Postgres 17 + mock services: import, publish, SM-04 webhook, both briefs, a mirror that is down then the next one (remembered in Postgres, also after a restart), scheduled SM-03, the bot lock on a Railway-style start (only `RAILWAY_PUBLIC_DOMAIN`, no `N8N_WEBHOOK_URL`). `E2E_AI=gemini` runs it on Gemini (and the bot reads a chart through WF-11.1), `E2E_AI=none` with no AI key. | the same |
 | [tests/windows/](tests/windows/README.md) | the Windows install (56 checks) and start scripts (20 checks, with a real n8n start) | PowerShell 7 |
 
 ## Troubleshooting
@@ -165,6 +197,9 @@ Errors are never cached and say what to fix (wrong secret, SM-04 not published, 
 | `Mismatching encryption keys` | `N8N_ENCRYPTION_KEY` differs from the key n8n created first. Remove it (Windows) or set the original one. |
 | `not published "…": missing key: …` | Fill that key in your env file or in n8n → Credentials; the next start publishes it. |
 | `Telegram Trigger needs N8N_WEBHOOK_URL=https://…` | WF-11.2 waits until n8n has a public https address. |
+| Railway: n8n can't reach the database (`ECONNREFUSED … 5432`, `ENOTFOUND`) | The `${{Postgres.…}}` variables don't point at the database: its service must be named `Postgres`, or change `Postgres` in them to its name. |
+| Railway: requests to Telegram, FMP or the market sites fail on a new account | Railway's limited trial restricts outbound traffic. Verify the account at railway.com/verify (it uses your GitHub account) or take the Hobby plan. |
+| The dashboard says `n8n did not answer` or `HTTP 404` | n8n is down, `N8N_BASE_URL` is wrong, or SM-04 is not published (its Railway log line says why). Fix it, then reload: errors are not cached. |
 | The bot does not answer | It answers only `TELEGRAM_CHAT_ID`. With `@yourchannel` there, put your numeric chat id in WF-11.2 → Telegram Trigger → Restrict to Chat IDs (comma-separated for several). |
 | `AMD: not in your FMP plan` in the US picks | The free FMP plan covers only part of the US market; that ticker is skipped. |
 | "Source problems today" in the Africa brief | That exchange's site did not answer or changed its layout; the other markets still go out. `windows\check-sources.cmd` shows which one and why. |
@@ -192,7 +227,7 @@ workflows/            the 6 workflow files n8n imports
 src/code/             the Code-node JavaScript (tested by tests/run-tests.mjs); lib-*.js are pasted into the others
 src/original/         your WF-11 exports, as received
 tools/                build-workflows.mjs, upgrade-wf11.mjs, code-files.mjs, first-run-setup.mjs, check-sources.mjs
-Dockerfile, docker/, docker-compose*.yml, railway.json, .env.example
+Dockerfile, docker/, docker-compose*.yml, .env.example
 windows/              install-n8n.cmd/.ps1, start-n8n.cmd/.ps1, check-sources.cmd, n8n.env.example
 vercel/               dashboard, api/brief.js, api/health-cron.js, vercel.json
 templates/            template index, the 7 selected templates, fetch-templates.mjs (defuddle)

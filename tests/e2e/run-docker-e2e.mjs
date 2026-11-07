@@ -5,8 +5,10 @@
 // Checks: start-up setup (credentials, import, publish), the SM-04 webhook (runs SM-02 + SM-01 as published
 // sub-workflows), Telegram HTML of both briefs with the 🌙 picks, mood, headlines and X posts, scheduled SM-03 runs
 // sending to Telegram, the X mirror list (the first mirror is down: the brief says so, the next run uses the second one,
-// remembered in the workflows' static data in Postgres), a restart, and the Telegram bot (WF-11.2): published once
-// N8N_WEBHOOK_URL is https, it refuses updates without n8n's secret token and answers only the chat in TELEGRAM_CHAT_ID.
+// remembered in the workflows' static data in Postgres), a restart, and the Telegram bot (WF-11.2) on a Railway-style
+// start (no N8N_WEBHOOK_URL, only RAILWAY_PUBLIC_DOMAIN and PORT, as Railway gives them): the entrypoint turns the domain
+// into the https URL, the bot gets published, it refuses updates without n8n's secret token and answers only the chat
+// in TELEGRAM_CHAT_ID.
 // E2E_AI picks the AI: openai (default, the workflow files as they are), gemini (GEMINI_API_KEY only: the setup
 // switches the AI nodes to Google Gemini; the bot also fetches and reads a chart through WF-11.1), none (no AI key:
 // the briefs go out without their AI paragraph, the bot stays unpublished).
@@ -315,15 +317,17 @@ try {
   assert.match(afterRestart.africa.html, /𝕏 <b>2 posts<\/b>/, 'the mirror that answered is still remembered after a restart');
   assert.doesNotMatch(afterRestart.africa.html, /nitter-down/);
 
-  step('Telegram bot (WF-11.2): https URL + chart-img key → published; answers only TELEGRAM_CHAT_ID');
+  step('Telegram bot (WF-11.2) on a Railway-style start: RAILWAY_PUBLIC_DOMAIN → https URL; + chart-img key → published; answers only TELEGRAM_CHAT_ID');
   docker('rm', '-f', N8N);
   const botAt = log.length;
-  const botEnv = { ...ENV, N8N_WEBHOOK_URL: 'https://n8n.e2e.test/', CHART_IMG_API_KEY: 'chart-test' };
+  const { N8N_WEBHOOK_URL: _local, ...withoutUrl } = ENV;
+  const botEnv = { ...withoutUrl, RAILWAY_PUBLIC_DOMAIN: 'n8n.e2e.test', PORT: '5678', CHART_IMG_API_KEY: 'chart-test' };
   docker('run', '-d', '--name', N8N, '--network', 'host', '-v', `${wfDir}:/opt/e2e-workflows:ro`, ...Object.entries(botEnv).flatMap(([k, v]) => ['-e', `${k}=${v}`]), IMAGE);
   await waitHealthy();
   await waitWebhookRegistered();
   const third = docker('logs', N8N).split('\n').filter((l) => l.includes('[stock-market setup]'));
   console.log(third.join('\n'));
+  assert.ok(third.some((l) => l.includes('Railway: webhooks at https://n8n.e2e.test/, editor at https://n8n.e2e.test/, proxy hops 1')), 'the entrypoint used the Railway domain');
   if (AI === 'none') {
     // No AI key: the assistant can't answer, so it is not published, whatever else is ready.
     assert.ok(third.some((l) => /not published "WF-11\.1.*missing key: OpenAI/.test(l)), 'WF-11.1 waits for an AI key');

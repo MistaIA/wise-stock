@@ -6,6 +6,51 @@ Project folder: `2026/Startover/stock-market-n8n/` in the project files. Code: h
 
 ---
 
+## 2026-11-07 · Deploy: n8n on Railway, dashboard on Vercel (steps checked against both docs)
+
+**Asked by MistaIA** (21:47 UTC): "I want to deploy on vercel now".
+
+Vercel can only host the dashboard (`vercel/`); it needs n8n at a public https address, and n8n on IA listens on 127.0.0.1 only. So the deploy is the planned split: n8n on Railway from the GitHub repo (Dockerfile + Railway Postgres), then the dashboard on Vercel from the same repo (Root Directory `vercel`). MistaIA creates the accounts and pastes the keys; agents never type them.
+
+### Done
+
+- **Read the current Railway and Vercel docs** before writing the steps (facts kept in project memory). Two things in our old Railway steps would have broken a new deploy:
+  - `railway.json` is not read for new services any more ("New services cannot opt into Config as Code"; old services stop reading it on 2026-12-01). Removed from the repo; the healthcheck path is now a setting in README step C3.
+  - The old steps added a volume at `/home/node/.n8n`. Railway mounts volumes for root and n8n runs as user `node`, so n8n could not have written its config there (Railway's fix is running as root, `RAILWAY_RUN_UID=0`). Dropped: with Postgres and `N8N_ENCRYPTION_KEY` n8n needs no volume.
+- **`docker/entrypoint.sh`**: when `RAILWAY_PUBLIC_DOMAIN` is set (Railway sets it once the service has a domain), `N8N_WEBHOOK_URL` and `N8N_EDITOR_BASE_URL` default to `https://<domain>/` and `N8N_PROXY_HOPS` to 1. Hand-set values (also the old `WEBHOOK_URL`) win. MistaIA no longer types the domain into variables, and the order of steps does not matter.
+- **README → "C. Railway"** rewritten as 6 steps with one block to paste into Railway's Raw Editor: `PORT=5678` (Railway's healthcheck uses `PORT`), `DB_TYPE` + `DB_POSTGRESDB_*` as `${{Postgres.PG…}}` references, `N8N_AUTO_PUBLISH=true` (the setup only publishes with it; the Dockerfile does not set it), `N8N_ENCRYPTION_KEY` (new, with a PowerShell one-liner to make it, tested in PowerShell 7.4), the keys. Step 6: stop n8n on the PC afterwards, or every brief goes out twice. New troubleshooting rows (database references, Railway's limited trial blocking outbound traffic, dashboard errors).
+- **Vercel**: `api/brief.js` builds the SM-04 URL from `N8N_BASE_URL` (`N8N_BRIEF_URL` is now an optional override), so the dashboard needs only `N8N_BASE_URL`, `BRIEF_SECRET`, `CRON_SECRET` (+ optional Telegram alert). `vercel.json` sets `"fluid": true` and 300 s for `api/brief.js` (Hobby maximum with Fluid compute); n8n gets 280 s, because SM-04 runs SM-02 then SM-01 against the live sources and can take over a minute (it had 55 s before). The page says the first load can take a minute or two. README → "Vercel dashboard" rewritten as 3 steps. `.env.example` files point at the new steps.
+
+### How it was tested (7 Nov, cloud container)
+
+| Test | Result |
+|---|---|
+| `node tests/vercel-api.test.mjs` (new: URL from `N8N_BASE_URL` with or without the last slash, override, missing settings, vercel.json limits) | 9/9 |
+| `node tests/run-tests.mjs` | 42/42 |
+| entrypoint with a stub n8n: no Railway, Railway domain only, hand-set values, old `WEBHOOK_URL`, empty values | as expected |
+| `node tests/e2e/run-docker-e2e.mjs` (OpenAI; the bot step now starts like Railway: no `N8N_WEBHOOK_URL`, only `RAILWAY_PUBLIC_DOMAIN` + `PORT`, and n8n registers the Telegram webhook at `https://<domain>/webhook/…`) | pass |
+| `E2E_AI=gemini node tests/e2e/run-docker-e2e.mjs` | pass (the bot also reads a chart through WF-11.1) |
+
+Not tested: a real Railway or Vercel account (none here), and which Postgres major version Railway gives a new database (n8n 2.46 only warns below 17). The Raw Editor accepting `${{…}}` references is common use but not written in Railway's docs; if a reference stays as text, add those variables one by one with **New Variable**.
+
+### Open issues
+
+- n8n on Railway costs money after the trial (Hobby $5 a month, usage included up to $5). A new Railway account on the limited trial may have outbound traffic blocked until it is verified.
+- Two n8n with the same Telegram bot and workflows (PC + Railway) send each brief twice: stop the PC one once Railway runs.
+- The PC copy on IA still has `railway.json` (folder tools can't delete there); it is unused and can be deleted.
+
+### Next steps
+
+1. MistaIA: README → "C. Railway" steps 1 to 6, then README → "Vercel dashboard" steps 1 to 3.
+2. Check: Railway Deploy Logs show `published "SM-01 …"` … `published "WF-11.2 …"` (WF-11.2 also needs an AI key and the chart-img key for WF-11.1); `https://<project>.vercel.app` shows both briefs; the Telegram bot answers.
+3. Then the next steps of the entries below (new chart-img key, live check of the briefs).
+
+### Trello
+
+`[DEPLOY] Deploy n8n container to Railway with Postgres` and `[DEPLOY] Deploy the Vercel dashboard and connect it to n8n`: comment with the new steps; they wait for MistaIA's accounts.
+
+---
+
 ## 2026-11-07 · Code on GitHub: MistaIA/wise-stock
 
 **Asked by MistaIA** (20:59 UTC): "Link to its github account: https://github.com/MistaIA/wise-stock.git".

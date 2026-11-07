@@ -1,8 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "outputDirectory": "public",
+  "fluid": true,
   "functions": {
-    "api/brief.js": { "maxDuration": 60 },
+    "api/brief.js": { "maxDuration": 300 },
     "api/health-cron.js": { "maxDuration": 60 }
   },
   "crons": [{ "path": "/api/health-cron", "schedule": "0 6 * * *" }],
