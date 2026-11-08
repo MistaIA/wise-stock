@@ -6,6 +6,12 @@ Project folder: `2026/Startover/stock-market-n8n/` in the project files. Code: h
 
 ---
 
+## 2026-11-08 · Railway keeps `SM_REIMPORT_WORKFLOWS=true`
+
+**Asked by MistaIA** (12:09 UTC): why add the variable and delete it again, when each edit costs a deploy? Agreed: on Railway all changes come from the repo by pull request, so the variable now stays `true` there (README C, step 4 block and the "Workflow updates" note). Every start re-imports and re-publishes the workflow files; static data and credentials are kept (checked earlier on Postgres); edits made in the n8n editor are replaced at the next start. On the PC it stays a one-time switch. Docs only; no code change.
+
+---
+
 ## 2026-11-08 · Dashboard: Dangote watch section, small charts, no HTML codes
 
 **Asked by MistaIA** (11:41 UTC), after pasting the live dashboard: the Dangote refinery IPO was missing on the page, there were no charts, and some text showed `&amp;` / `&#39;`. "Yes do those and update with PRs".
