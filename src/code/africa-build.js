@@ -391,6 +391,20 @@ for (const m of ['ngx', 'brvm', 'bvmac']) {
   picks[m] = pickOf(marketRows[m], sessions);
 }
 if (sd) sd.history = history;
+// The closes kept above for the shares the dashboard shows (watchlist, Dangote, movers, the pick, BVMAC), for its
+// small charts. Only 🌙 shares have kept closes; a chart appears from the second session on.
+for (const m of ['ngx', 'brvm', 'bvmac']) {
+  const src = sources[m];
+  if (!src) continue;
+  const shown = m === 'bvmac' ? src.equities.map((e) => e.ticker) : [...(src.watchlist || []), ...(src.dangote || []), ...(src.gainers || []), ...(src.losers || [])].map((r) => r.symbol);
+  if (picks[m]) shown.push(picks[m].symbol);
+  const closes = {};
+  for (const s of new Set(shown.filter(Boolean))) {
+    const points = (history[m] || []).filter((x) => typeof x.c[s] === 'number').map((x) => ({ d: x.d, c: x.c[s] }));
+    if (points.length) closes[s] = points;
+  }
+  src.closes = closes;
+}
 if (sources.ngx) delete sources.ngx.rows;
 if (sources.brvm) delete sources.brvm.rows;
 

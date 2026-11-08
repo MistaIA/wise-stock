@@ -183,7 +183,7 @@ try {
   const denied = await fetch('http://127.0.0.1:5678/webhook/market-brief');
   assert.ok([401, 403].includes(denied.status), `no secret → ${denied.status}`);
 
-  step('SM-04 webhook → SM-02 + SM-01 as sub-workflows');
+  step('SM-04 webhook → SM-02 + SM-01 + SM-03 as sub-workflows');
   const before = log.length; // SM-03 runs every minute in this test, so only look at the calls made during the request
   const r = await fetch('http://127.0.0.1:5678/webhook/market-brief', { headers: { 'X-Brief-Secret': 'e2e-secret' } });
   const text = await r.text();
@@ -226,6 +226,17 @@ try {
   assert.match(brief.picks.html, /AMD: not in your FMP plan/);
   assert.equal(brief.picks.data.picks.length, 2);
   assert.equal(brief.africa.data.bvmac.equities.length, 7);
+  // The Dangote watch (SM-03, called on demand: last 72 h, always answers) and the closes behind the dashboard's charts.
+  assertTelegramHtml(brief.dangote.html, 'dangote');
+  assert.match(brief.dangote.html, /^🛢️ <b>Dangote watch<\/b>/);
+  assert.deepEqual(brief.dangote.data.shares.map((x) => x.symbol).sort(), ['DANGCEM', 'DANGSUGAR', 'NASCON']);
+  assert.match(brief.dangote.data.ipoNote, /Dangote Petroleum Refinery IPO/);
+  assert.deepEqual(brief.africa.data.ngx.closes.DANGCEM.map((x) => x.c).at(-1), 540, 'today\'s close kept for the chart');
+  // SM-03 also runs every minute on its test schedule. Whichever SM-03 run comes first (this one or the scheduled one)
+  // finds the first mirror down; every later one uses the second mirror, remembered in SM-03's static data.
+  const dangoteFirst = brief.dangote.data.x.state === 'failed';
+  if (dangoteFirst) assert.match(brief.dangote.html, /⚠️ X posts: no answer from 127\.0\.0\.1:8099\/nitter-down \([^\n]*503[^\n]*\); the next run tries 127\.0\.0\.1:8099\/nitter/);
+  else assert.equal(brief.dangote.data.x.state, 'ok', JSON.stringify(brief.dangote.data.x));
   const during = log.slice(before);
   const fmpCalls = during.filter((l) => l.path.startsWith('/fmp/')).length;
   assert.equal(fmpCalls, 30, `FMP calls for 10 tickers × 3 endpoints, no retries (got ${fmpCalls})`);
@@ -288,17 +299,27 @@ try {
   else assert.match(msg.text, /🧠 <b>What it means<\/b>\nAllotment approved; listing expected in December &lt;check&gt; &amp; refunds pending\./);
   assert.doesNotMatch(msg.text, /Investors await/, '31 h old headline is outside the 12 h schedule window');
   assert.doesNotMatch(msg.text, RELIGIOUS);
-  assert.doesNotMatch(msg.text, /𝕏/);
-  assert.match(msg.text, /⚠️ X posts: no answer from 127\.0\.0\.1:8099\/nitter-down \([^\n]*503[^\n]*\); the next run tries 127\.0\.0\.1:8099\/nitter/);
-  if (AI === 'none') assert.match(msg.text, /🧭 <b>Mood:<\/b> 🟢 positive · 1 good, 0 bad, 1 neutral \(headlines and X posts\)/);
-  else assert.match(msg.text, /🧭 <b>Mood:<\/b> 🟢 positive · 2 good, 0 bad, 0 neutral \(headlines and X posts\)/);
+  const postsLine = /𝕏 <b>On X \(last 12 h\)<\/b>: 2 posts, latest:\n🟢 <a href="http:\/\/127\.0\.0\.1:8099\/nitter\/oilwatcher\/status\/301">@oilwatcher<\/a>: Dangote refinery IPO demand surges, shares to list in December · (\d+ min|1 h) ago\n🔴 <a href="[^"]+">@lagosdesk<\/a>: Dangote refinery delays refunds, investors warn of losses · 3 h ago/;
+  if (dangoteFirst) {
+    // The on-demand run above already found the first mirror down: the scheduled run starts on the second one.
+    assert.match(msg.text, postsLine);
+    assert.doesNotMatch(msg.text, /⚠️/);
+  } else {
+    assert.doesNotMatch(msg.text, /𝕏/);
+    assert.match(msg.text, /⚠️ X posts: no answer from 127\.0\.0\.1:8099\/nitter-down \([^\n]*503[^\n]*\); the next run tries 127\.0\.0\.1:8099\/nitter/);
+    if (AI === 'none') assert.match(msg.text, /🧭 <b>Mood:<\/b> 🟢 positive · 1 good, 0 bad, 1 neutral \(headlines and X posts\)/);
+    else assert.match(msg.text, /🧭 <b>Mood:<\/b> 🟢 positive · 2 good, 0 bad, 0 neutral \(headlines and X posts\)/);
+  }
   for (let i = 0; i < 45 && dangoteSends().length < 2; i++) await sleep(2000);
   const next = dangoteSends()[1];
   assert.ok(next, 'SM-03 ran again a minute later');
   console.log(next.text);
   assertTelegramHtml(next.text, 'dangote, second run');
-  assert.match(next.text, /𝕏 <b>On X \(last 12 h\)<\/b>: 2 posts, latest:\n🟢 <a href="http:\/\/127\.0\.0\.1:8099\/nitter\/oilwatcher\/status\/301">@oilwatcher<\/a>: Dangote refinery IPO demand surges, shares to list in December · (\d+ min|1 h) ago\n🔴 <a href="[^"]+">@lagosdesk<\/a>: Dangote refinery delays refunds, investors warn of losses · 3 h ago/);
+  assert.match(next.text, postsLine);
   assert.doesNotMatch(next.text, /⚠️/);
+  const dangoteX = log.filter((l) => /^\/nitter/.test(l.path) && /Dangote/.test(l.query.q)).map((l) => l.path.split('/')[1]);
+  assert.equal(dangoteX[0], 'nitter-down', 'the first SM-03 run asks the first mirror');
+  assert.ok(dangoteX.slice(1).every((m) => m === 'nitter'), `later runs ask the second mirror only: ${dangoteX.join(', ')}`);
   assert.equal(staticData('smDangoteWatch01').xMirror, `${M}/nitter`);
 
   step('restart: setup keeps the imported workflows');

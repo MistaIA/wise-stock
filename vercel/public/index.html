@@ -60,6 +60,16 @@
   .tg { white-space: pre-wrap; border-left: 3px solid var(--line); padding: 8px 12px; margin-top: 8px; font-size: 0.92rem; overflow-wrap: anywhere; }
   a { color: var(--accent); }
   footer { padding-bottom: 32px; }
+  svg.spark, svg.range { display: block; overflow: visible; }
+  svg.spark polyline, svg.range line.track { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  svg.spark.up polyline { stroke: var(--up); }
+  svg.spark.down polyline { stroke: var(--down); }
+  svg.spark circle { fill: currentColor; }
+  svg.range line.track { stroke: var(--line); stroke-width: 6; }
+  svg.range circle { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
+  .range-wrap { margin-top: 10px; }
+  .range-wrap .labels { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .look .chart { margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -70,6 +80,7 @@
 <main>
   <section id="picks" aria-labelledby="picks-h"><h2 id="picks-h">🌙 US stock picks</h2><div class="body"></div></section>
   <section id="africa" aria-labelledby="africa-h"><h2 id="africa-h">🌍 African markets: NGX, BRVM, BVMAC</h2><div class="body"></div></section>
+  <section id="dangote" aria-labelledby="dangote-h"><h2 id="dangote-h">🛢️ Dangote watch: refinery IPO and Dangote shares</h2><div class="body"></div></section>
 </main>
 <footer>
   <p class="muted small">Information only, not financial advice. 🌙 marks shares that pass the screen. For the US picks: debt and cash each under 30% of market cap, interest income under 5% of revenue and no excluded business, from the latest annual statements. For the African markets: business activity only (no banks or other interest-based finance, insurers, alcohol, tobacco, gambling or hotels); debt is not checked. Confirm with a screening service before investing. Mood and dots rate the headlines and X posts (by the AI when it answered, otherwise by keywords). NGX prices come from the feed behind NGX's own price list (unofficial), BRVM from brvm.org, BVMAC from its official bulletin (PDF), headlines from Google News, X posts from a Nitter mirror. Prepared by n8n; refreshed at most every 6 hours.</p>
@@ -105,6 +116,51 @@
     const min = Math.round(h * 60);
     return min < 60 ? `${Math.max(1, min)} min ago` : h < 47.5 ? `${Math.round(h)} h ago` : `${Math.round(h / 24)} days ago`;
   };
+
+  // ---------------- small charts (inline SVG, drawn from numbers only) ----------------
+  const SVG = 'http://www.w3.org/2000/svg';
+  const svg = (tag, attrs = {}) => {
+    const n = document.createElementNS(SVG, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+    return n;
+  };
+  // Closing prices of the last sessions as a line; green when the last close is above the first, red when below.
+  function sparkline(points, { w = 96, h = 26, money = (v) => String(v) } = {}) {
+    const pts = (points || []).filter((p) => p && num(p.c));
+    if (pts.length < 2) return null;
+    const vals = pts.map((p) => p.c);
+    const lo = Math.min(...vals);
+    const hi = Math.max(...vals);
+    const pad = 3;
+    const x = (i) => pad + (i * (w - 2 * pad)) / (pts.length - 1);
+    const y = (v) => (hi === lo ? h / 2 : pad + ((hi - v) * (h - 2 * pad)) / (hi - lo));
+    const first = vals[0];
+    const last = vals[vals.length - 1];
+    const dir = last > first ? 'up' : last < first ? 'down' : '';
+    const label = `${pts.length} sessions, ${pts[0].d} ${money(first)} to ${pts[pts.length - 1].d} ${money(last)}`;
+    const s = svg('svg', { class: `spark ${dir}`.trim(), width: w, height: h, viewBox: `0 0 ${w} ${h}`, role: 'img', 'aria-label': label });
+    const t = svg('title');
+    t.textContent = label;
+    s.append(t, svg('polyline', { points: pts.map((p, i) => `${x(i).toFixed(1)},${y(p.c).toFixed(1)}`).join(' ') }));
+    const end = svg('circle', { cx: x(pts.length - 1).toFixed(1), cy: y(last).toFixed(1), r: 2.2 });
+    end.style.color = dir === 'up' ? 'var(--up)' : dir === 'down' ? 'var(--down)' : 'var(--muted)';
+    s.append(end);
+    return s;
+  }
+  // Where today's price sits between the 52-week low and high.
+  function rangeBar(low, high, price, money) {
+    if (![low, high, price].every(num) || high <= low) return null;
+    const w = 240;
+    const h = 14;
+    const pos = Math.min(1, Math.max(0, (price - low) / (high - low)));
+    const label = `52-week range ${money(low)} to ${money(high)}, now ${money(price)} (${Math.round(pos * 100)}%)`;
+    const s = svg('svg', { class: 'range', width: '100%', height: h, viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: 'none', role: 'img', 'aria-label': label });
+    const t = svg('title');
+    t.textContent = label;
+    s.append(t, svg('line', { class: 'track', x1: 4, y1: h / 2, x2: w - 4, y2: h / 2 }), svg('circle', { cx: (4 + pos * (w - 8)).toFixed(1), cy: h / 2, r: 5 }));
+    return el('div', { class: 'range-wrap' }, s, el('div', { class: 'labels' }, el('span', { text: `52w low ${money(low)}` }), el('span', { text: `high ${money(high)}` })));
+  }
+  const NO_CHART = () => el('span', { class: 'muted small', text: '·' });
 
   // The briefs carry Telegram HTML. Only Telegram's own tags survive, links only with http(s), and every other
   // attribute is dropped, so nothing from a headline, a post or the AI text can run in this page.
@@ -172,7 +228,8 @@
             num(m.rangePosition) ? el('span', { class: 'chip', text: `at ${Math.round(m.rangePosition * 100)}% of its 52-week range` }) : null,
             num(m.revenueGrowth) ? el('span', { class: 'chip', text: `revenue ${m.revenueGrowth >= 0 ? '+' : ''}${Math.round(m.revenueGrowth * 100)}% YoY` }) : null,
             num(m.netMargin) ? el('span', { class: 'chip', text: `net margin ${Math.round(m.netMargin * 100)}%` }) : null,
-            pe ? el('span', { class: 'chip', text: `P/E ${pe}` }) : null));
+            pe ? el('span', { class: 'chip', text: `P/E ${pe}` }) : null),
+          rangeBar(m.low, m.high, p.price, usd));
       })));
     }
     if (d.others && d.others.length) box.append(el('p', { class: 'small' }, el('b', { text: 'Also passed: ' }), d.others.map((o) => `${o.symbol} (${o.score})`).join(', ')));
@@ -226,6 +283,10 @@
     return el('div', { class: 'look' },
       el('div', {}, el('b', { text: '🌙 To look at: ' }), el('span', { class: 'sym', text: p.symbol }), p.name && p.name !== p.symbol ? el('span', { class: 'muted', text: ` · ${p.name}` }) : null),
       el('div', {}, MARKET_MONEY[key](p.close), ' ', pct(p.changePct), bits.length ? el('span', { class: 'muted', text: ` · ${bits.join(' · ')}` }) : null),
+      (() => {
+        const chart = sparkline(((d[key] || {}).closes || {})[p.symbol], { w: 180, h: 40, money: MARKET_MONEY[key] });
+        return chart ? el('div', { class: 'chart' }, chart) : null;
+      })(),
       why ? el('p', { class: 'small' }, el('i', { text: why })) : null);
   }
 
@@ -275,6 +336,7 @@
       { label: 'Name', wide: true, value: (r) => (r.missing ? 'not in today\'s list' : r.name || '') },
       { label: 'Close', num: true, value: (r) => money(r.close) },
       { label: 'Change', num: true, value: (r) => pct(r.changePct) },
+      { label: 'Trend', value: (r) => sparkline((m.closes || {})[r.symbol], { money }) || NO_CHART() },
     ];
     if (m.dangote && m.dangote.length) wrap.append(el('p', { class: 'small' }, el('b', { text: 'Dangote shares' })), table(cols, m.dangote));
     if (m.watchlist && m.watchlist.length) wrap.append(el('p', { class: 'small' }, el('b', { text: 'Watchlist' })), table(cols, m.watchlist));
@@ -302,6 +364,7 @@
       { label: 'Name', wide: true, value: (r) => r.name || r.isin || '' },
       { label: 'Close', num: true, value: (r) => fcfa(r.close) },
       { label: 'Change', num: true, value: (r) => pct(r.changePct) },
+      { label: 'Trend', value: (r) => sparkline((b.closes || {})[r.ticker], { money: fcfa }) || NO_CHART() },
     ], b.equities || []));
     if (b.unparsed && b.unparsed.length) wrap.append(el('p', { class: 'muted small', text: `Not readable in the PDF: ${b.unparsed.map((u) => u.ticker || u.isin || u).join(', ')}` }));
     return wrap;
@@ -317,7 +380,7 @@
     const rated = d.ai && d.ai.sentiment && typeof d.ai.sentiment === 'object' ? d.ai.sentiment : {};
     const byAi = Object.keys(rated).length > 0;
     const rate = (item) => (item && item.id && Object.prototype.hasOwnProperty.call(rated, item.id) ? rating(rated[item.id]) : (item && item.kw) || 0);
-    box.append(el('p', { class: 'muted small', text: `As of ${d.asOf || 'n/a'} · 🌙 = passes the screen (business activity only; debt not checked) · dots and mood rated ${byAi ? 'by the AI' : 'by keywords'}` }));
+    box.append(el('p', { class: 'muted small', text: `As of ${d.asOf || 'n/a'} · 🌙 = passes the screen (business activity only; debt not checked) · dots and mood rated ${byAi ? 'by the AI' : 'by keywords'} · Trend: closes of the last sessions (up to 10) of the 🌙 shares, from the second session n8n has seen` }));
     const insights = d.ai && Array.isArray(d.ai.insights) ? d.ai.insights.filter((t) => typeof t === 'string' && t.trim()) : [];
     if (insights.length) box.append(el('p', { class: 'small' }, el('b', { text: '🧠 Insights' })), el('ul', { class: 'small' }, insights.map((t) => el('li', { text: t }))));
     box.append(marketBlock(d, 'ngx', 'NGX (Nigeria)', d.ngx, errors.ngx, rate));
@@ -326,6 +389,55 @@
     if (d.x && d.x.state === 'failed') {
       box.append(el('p', { class: 'muted small', text: `X posts: no answer from ${d.x.mirror || 'the mirror'}${d.x.error ? ` (${d.x.error})` : ''}${d.x.next ? `; the next run tries ${d.x.next}` : ''}.` }));
     }
+    const tg = telegramDetails(brief.html);
+    if (tg) box.append(tg);
+  }
+
+  // ---------------- 🛢️ Dangote watch (SM-03) ----------------
+  function renderDangote(box, brief, africaData) {
+    const d = brief && brief.data;
+    if (!d) {
+      box.append(el('p', { class: 'banner', text: 'The Dangote watch did not come through this time (see n8n → Executions → SM-03).' }), telegramDetails(brief && brief.html) || '');
+      return;
+    }
+    const rated = d.ai && d.ai.sentiment && typeof d.ai.sentiment === 'object' ? d.ai.sentiment : {};
+    const rate = (item) => (item && item.id && Object.prototype.hasOwnProperty.call(rated, item.id) ? rating(rated[item.id]) : (item && item.kw) || 0);
+    const xOk = d.x && d.x.state === 'ok';
+    const news = d.articles || [];
+    const posts = xOk ? d.posts || [] : [];
+    const hours = d.lookbackHours || 72;
+    if (d.newListings && d.newListings.length) {
+      box.append(el('p', { class: 'banner', text: `New Dangote listing on NGX: ${d.newListings.map((s) => `${s.symbol} (${s.name}) ${naira(s.close)}`).join(', ')}` }));
+    }
+    const summary = d.ai && typeof d.ai.summary === 'string' ? d.ai.summary.trim() : '';
+    if (summary) box.append(el('p', { class: 'small' }, el('b', { text: '🧠 What it means: ' }), summary));
+    const m = mood([...news, ...posts].map(rate));
+    if (m) box.append(el('p', { class: 'mood small' }, el('b', { text: '🧭 Mood: ' }), m));
+    if (news.length) {
+      box.append(el('p', { class: 'small' }, el('b', { text: `📰 Refinery IPO headlines, last ${hours} h` })));
+      box.append(el('ul', { class: 'feed small' }, news.map((a) => el('li', {}, `${dot(rate(a))} `, safeLink(a.link, a.title || ''), el('span', { class: 'muted', text: `${a.source ? ` · ${a.source}` : ''} · ${ago(a.ts)}` })))));
+    } else {
+      box.append(el('p', { class: 'muted small', text: d.newsError ? `📰 Headlines: ${d.newsError}` : `📰 No refinery IPO headlines in the last ${hours} h.` }));
+    }
+    if (xOk && posts.length) {
+      box.append(el('p', { class: 'small' }, el('b', { text: `𝕏 ${posts.length} post${posts.length === 1 ? '' : 's'}` }), ` in ${hours} h`));
+      box.append(el('ul', { class: 'feed small' }, posts.map((p) => el('li', {}, `${dot(rate(p))} `, safeLink(p.link, `@${p.user || 'unknown'}`), `: ${p.text || ''}`, el('span', { class: 'muted', text: ` · ${ago(p.ts)}` })))));
+    } else if (xOk) {
+      box.append(el('p', { class: 'muted small', text: `𝕏 No posts in the last ${hours} h.` }));
+    }
+    if (d.shares && d.shares.length) {
+      const closes = (africaData && africaData.ngx && africaData.ngx.closes) || {};
+      box.append(el('p', { class: 'small' }, el('b', { text: `Dangote shares on NGX${d.session ? ` · ${d.session}` : ''}` })), table([
+        { label: 'Symbol', value: (r) => r.symbol },
+        { label: 'Name', wide: true, value: (r) => r.name || '' },
+        { label: 'Close', num: true, value: (r) => naira(r.close) },
+        { label: 'Change', num: true, value: (r) => pct(r.changePct) },
+        { label: 'Trend', value: (r) => sparkline(closes[r.symbol], { money: naira }) || NO_CHART() },
+      ], d.shares));
+    } else if (d.ngxError) {
+      box.append(el('p', { class: 'muted small', text: `NGX: ${d.ngxError}` }));
+    }
+    if (d.ipoNote) box.append(el('p', { class: 'muted small' }, el('i', { text: `ℹ️ ${d.ipoNote}` })));
     const tg = telegramDetails(brief.html);
     if (tg) box.append(tg);
   }
@@ -342,6 +454,8 @@
         : 'Prepared by n8n';
       renderPicks($('#picks .body'), b.picks);
       renderAfrica($('#africa .body'), b.africa);
+      if (b.dangote) renderDangote($('#dangote .body'), b.dangote, b.africa && b.africa.data);
+      else $('#dangote').hidden = true;
     } catch (e) {
       status.replaceChildren(el('span', { class: 'banner', text: `The briefs are not available right now: ${e.message}` }));
     }

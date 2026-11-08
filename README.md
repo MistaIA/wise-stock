@@ -22,7 +22,7 @@ New here, or picking up from another agent? Read [JOURNAL.md](JOURNAL.md) first 
  BVMAC bulletin PDF ─►│ SM-01 US stock picks    Mon–Fri 07:30 ──┤                                                   │
  FMP (US stocks) ────►│ SM-03 Dangote watch     daily 08:00, 18:00                                                 │
  Google News RSS ────►│ WF-11.2 Telegram assistant (answers your messages; tools: SM-01..03, WF-11.1 chart)       │
- X via a Nitter ─────►│ SM-04 Brief API  GET /webhook/market-brief (header X-Brief-Secret) runs SM-01 + SM-02    │
+ X via a Nitter ─────►│ SM-04 Brief API  GET /webhook/market-brief (header X-Brief-Secret) runs SM-01, 02 and 03 │
  mirror (no account)  └──────────────────────────────────────────────▲───────────────────────────────────────────┘
                                                                      │ (n8n must be reachable from the internet)
  Browser ──► Vercel: public/index.html ──► /api/brief (CDN cache 6 h) ┘    Vercel cron 06:00 UTC ──► /api/health-cron
@@ -36,7 +36,7 @@ Times are Africa/Lagos (WAT, UTC+1).
 | SM-01 · US stock picks | [01-us-stock-picks.json](workflows/01-us-stock-picks.json) | Screens 10 large US tickers (Config node) with FMP statements, scores the ones that pass, sends the top 2 with an AI explanation (left out while there is no AI key). About 30 FMP calls per run (the free plan allows 250 a day). |
 | SM-02 · Africa markets brief | [02-africa-markets-brief.json](workflows/02-africa-markets-brief.json) | Per market: watchlist (NGX: Dangote Cement, Dangote Sugar, NASCON, MTN, BUA Cement, Seplat), breadth and movers, the 🌙 share to look at, the mood, the latest headlines and X posts. BVMAC: the index and its 7 shares from the latest official bulletin (PDF). AI insights and ratings when there is an AI key. A source that is down is named in the brief; the rest still goes out. |
 | SM-03 · Dangote watch | [03-dangote-watch.json](workflows/03-dangote-watch.json) | Refinery IPO headlines, X posts, their mood and the Dangote share prices; sends only when there is something new. Flags a new Dangote ticker on NGX (the refinery listing was expected around 8 Dec 2026). |
-| SM-04 · Market brief API | [04-market-brief-api.json](workflows/04-market-brief-api.json) | Webhook for the Vercel dashboard: runs SM-02 and SM-01 without sending to Telegram and returns both briefs as JSON. |
+| SM-04 · Market brief API | [04-market-brief-api.json](workflows/04-market-brief-api.json) | Webhook for the Vercel dashboard: runs SM-02, SM-01 and SM-03 without sending to Telegram and returns the three briefs as JSON. |
 | WF-11.1 · Stock chart analyst | [WF-11.1-stock-chart-analyst.json](workflows/WF-11.1-stock-chart-analyst.json) | Your chart tool (chart-img.com + OpenAI or Gemini vision), now with `EXCHANGE:TICKER` support and the key in a credential. |
 | WF-11.2 · Telegram assistant | [WF-11.2-telegram-market-assistant.json](workflows/WF-11.2-telegram-market-assistant.json) | Your AI agent, with stockPicks, africaMarkets and dangoteWatch as extra tools. Answers only the chat in `TELEGRAM_CHAT_ID`. Needs an https address (see below). |
 
@@ -103,6 +103,8 @@ Railway builds the [Dockerfile](Dockerfile) straight from your GitHub repo and r
 
 The `${{Postgres.…}}` values link to the database. n8n's address (`N8N_WEBHOOK_URL`, `N8N_EDITOR_BASE_URL`) and `N8N_PROXY_HOPS=1` come from the domain of step 3 by themselves ([docker/entrypoint.sh](docker/entrypoint.sh)); a value you set by hand wins. `PORT=5678` tells Railway which port n8n listens on (its health check uses `PORT`). No volume is needed: everything n8n keeps is in Postgres, and the key is in `N8N_ENCRYPTION_KEY`. Railway stopped reading `railway.json` for new services (it was replaced by its "Infrastructure as Code"), so this repo has none and the health check is the setting of step 3. Every push to `main` deploys again.
 
+**When a push changes the workflow files** (`workflows/*.json`): the redeploy alone keeps n8n's copies. Add the variable `SM_REIMPORT_WORKFLOWS=true`, let it deploy, check the Deploy Logs for `re-imported over the copies` and `published "SM-…"`, then delete the variable (it deploys once more, with nothing re-imported). Edits you made in the n8n editor to those workflows are replaced; what they remember (X mirror, closes) is kept.
+
 ## Keys
 
 The setup reads these at every start. A key you set is always written into its n8n credential. A key you leave empty becomes a credential holding `REPLACE_ME` (created once); then fill it in n8n → Credentials instead.
@@ -160,7 +162,7 @@ Run it when a brief says "Source problems today".
 
 ## Vercel dashboard
 
-Folder [vercel/](vercel/): `public/index.html` (the dashboard: the US picks, and per African market the 🌙 share to look at, mood, headlines, X posts and prices), `api/brief.js` (proxy to SM-04, cached 6 hours on Vercel's CDN, so the 250 FMP calls a day are safe) and `api/health-cron.js` (daily check that n8n is up, Telegram alert when it isn't). The dashboard needs n8n at a public https address, so deploy n8n first (Railway, [C](#c-railway-always-on-https)).
+Folder [vercel/](vercel/): `public/index.html` (the dashboard: the US picks with a 52-week range bar, per African market the 🌙 share to look at, mood, headlines, X posts and prices with a small trend line, and the Dangote watch: refinery IPO news, X posts and the Dangote shares), `api/brief.js` (proxy to SM-04, cached 6 hours on Vercel's CDN, so the 250 FMP calls a day are safe) and `api/health-cron.js` (daily check that n8n is up, Telegram alert when it isn't). The dashboard needs n8n at a public https address, so deploy n8n first (Railway, [C](#c-railway-always-on-https)).
 
 1. [vercel.com/new](https://vercel.com/new) → import `MistaIA/wise-stock` → **Root Directory** `vercel` → Framework Preset **Other**, no build command.
 2. **Environment Variables**, before you click **Deploy** ([vercel/.env.example](vercel/.env.example)):
@@ -183,10 +185,11 @@ A variable changed later only counts after a redeploy (Deployments → ⋯ → R
 | `node tests/run-tests.mjs` | 42 checks: the Code-node logic against samples made from the live NGX, BRVM, BVMAC, FMP and RSS answers of 6 Nov 2026 (the BOC PDF is a look-alike with that day's rows), the 🌙 screen and pick, headlines and X posts, mirror rotation, mood, the Telegram HTML, the setup's plan and publish rules, the Gemini switch, the wording | Node 22+ |
 | `N8N_NODE_MODULES=<folder>/node_modules node tests/validate-workflows.mjs` | every node type, version and parameter exists in n8n 2.46.6, in the files and in their Gemini versions | `npm i n8n@2.46.6 --ignore-scripts` in that folder |
 | `node tests/vercel-api.test.mjs` | the Vercel functions and vercel.json (9 checks, fake fetch) | Node 18+ |
+| `node tests/dashboard.test.mjs` | the dashboard in a real browser against a fake brief: text with `&` `'` `<` `>` shows as typed (no `&amp;`), nothing from the data runs as HTML, range bars, trend lines, Dangote section, no sideways scroll on a phone. `node tests/dashboard.test.mjs brief.json --shot=page.png` renders a saved brief instead (the e2e test saves one in the temp folder) | Node 18+ and Playwright with Chromium |
 | `node tests/fetch-templates.test.mjs` | the defuddle template fetcher (7 checks, local server) | registry.npmjs.org once |
 | `N8N_PACKAGE=<folder>/node_modules/n8n node tests/check-sources.test.mjs` | the live-source check (9 checks, local server, n8n's PDF and RSS readers, retries, X mirrors) | an n8n install |
 | `node tests/e2e/run-setup-test.mjs` | the setup against the real n8n CLI over 9 starts, including the switch to Gemini and back | Docker, `docker build -t stock-market-n8n:test .` |
-| `node tests/e2e/run-docker-e2e.mjs` | real n8n + Postgres 17 + mock services: import, publish, SM-04 webhook, both briefs, a mirror that is down then the next one (remembered in Postgres, also after a restart), scheduled SM-03, the bot lock on a Railway-style start (only `RAILWAY_PUBLIC_DOMAIN`, no `N8N_WEBHOOK_URL`). `E2E_AI=gemini` runs it on Gemini (and the bot reads a chart through WF-11.1), `E2E_AI=none` with no AI key. | the same |
+| `node tests/e2e/run-docker-e2e.mjs` | real n8n + Postgres 17 + mock services: import, publish, SM-04 webhook, the three briefs (the dashboard data incl. the closes behind the trend lines), a mirror that is down then the next one (remembered in Postgres, also after a restart), scheduled SM-03, the bot lock on a Railway-style start (only `RAILWAY_PUBLIC_DOMAIN`, no `N8N_WEBHOOK_URL`). `E2E_AI=gemini` runs it on Gemini (and the bot reads a chart through WF-11.1), `E2E_AI=none` with no AI key. | the same |
 | [tests/windows/](tests/windows/README.md) | the Windows install (56 checks) and start scripts (20 checks, with a real n8n start) | PowerShell 7 |
 
 ## Troubleshooting
