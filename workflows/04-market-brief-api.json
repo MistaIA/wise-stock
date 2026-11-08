@@ -92,16 +92,49 @@
     },
     {
       "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "smDangoteWatch01",
+          "cachedResultName": "SM-03 · Dangote watch (refinery IPO + Dangote shares) → Telegram"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "334cbb68-1638-4a1a-a8e2-cb407cefaf63",
+      "name": "Run Dangote watch",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -40,
+        30
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Market brief API · merge both sub-workflow results into one JSON answer for the Vercel dashboard.\nconst pick = (name) => {\n  try {\n    return $(name).all().map((i) => i.json);\n  } catch (e) {\n    return [];\n  }\n};\nconst africa = pick('Run Africa brief');\nconst picks = pick('Run stock picks');\nconst join = (items) => items.map((j) => j.text).filter(Boolean).join('\\n\\n');\nreturn [\n  {\n    json: {\n      generatedAt: new Date().toISOString(),\n      picks: { html: join(picks), data: (picks[0] && picks[0].data) || null },\n      africa: { html: join(africa), data: (africa[0] && africa[0].data) || null },\n    },\n  },\n];\n"
+        "jsCode": "// Market brief API · merge the sub-workflow results (Africa brief, US picks, Dangote watch) into one JSON answer for the\n// Vercel dashboard.\nconst pick = (name) => {\n  try {\n    return $(name).all().map((i) => i.json);\n  } catch (e) {\n    return [];\n  }\n};\nconst africa = pick('Run Africa brief');\nconst picks = pick('Run stock picks');\nconst dangote = pick('Run Dangote watch');\nconst join = (items) => items.map((j) => j.text).filter(Boolean).join('\\n\\n');\nreturn [\n  {\n    json: {\n      generatedAt: new Date().toISOString(),\n      picks: { html: join(picks), data: (picks[0] && picks[0].data) || null },\n      africa: { html: join(africa), data: (africa[0] && africa[0].data) || null },\n      dangote: { html: join(dangote), data: (dangote[0] && dangote[0].data) || null },\n    },\n  },\n];\n"
       },
       "id": "50508b36-9171-494c-a68c-ff035e2f7faf",
       "name": "Build response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -40,
+        180,
         30
       ]
     },
@@ -117,13 +150,13 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        180,
+        400,
         30
       ]
     },
     {
       "parameters": {
-        "content": "## 🔌 SM-04 · Market brief API\nThe Vercel dashboard calls `GET /webhook/market-brief` with header `X-Brief-Secret`. It runs SM-02 and SM-01 in \"return\" mode (nothing is sent to Telegram) and answers with both briefs as JSON.\n\n**Setup:** credential **Market brief secret** (Header Auth, name `X-Brief-Secret`, value = the same secret as `BRIEF_SECRET` on Vercel). Each call costs ~30 FMP calls, so the Vercel side caches for 6 hours.",
+        "content": "## 🔌 SM-04 · Market brief API\nThe Vercel dashboard calls `GET /webhook/market-brief` with header `X-Brief-Secret`. It runs SM-02, SM-01 and SM-03 in \"return\" mode (nothing is sent to Telegram) and answers with the three briefs as JSON.\n\n**Setup:** credential **Market brief secret** (Header Auth, name `X-Brief-Secret`, value = the same secret as `BRIEF_SECRET` on Vercel). Each call costs ~30 FMP calls, so the Vercel side caches for 6 hours.",
         "width": 560,
         "height": 280,
         "color": 4
@@ -163,6 +196,17 @@
       ]
     },
     "Run stock picks": {
+      "main": [
+        [
+          {
+            "node": "Run Dangote watch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Dangote watch": {
       "main": [
         [
           {

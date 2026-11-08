@@ -452,6 +452,12 @@ test('africa-build: the 5-session trend comes from the closes kept in static dat
   assert.equal(today.DANGCEM, 540);
   assert.equal(today.JAIZBANK, 3.2);
   assert.ok(!('GTCO' in today) && !('CHAMPION' in today), 'only 🌙 shares are kept');
+  // The dashboard's charts: the kept closes of the shares it shows, oldest first, today's close last.
+  assert.deepEqual(d.ngx.closes.DANGCEM.map((x) => x.c), [450, 470, 490, 505, 530, 540]);
+  assert.deepEqual(d.ngx.closes.DANGCEM.map((x) => x.d), [...days, '2026-11-06']);
+  assert.ok(!('CHAMPION' in d.ngx.closes), 'no chart for shares that do not pass the screen');
+  assert.ok(Object.keys(d.ngx.closes).every((sym) => [...d.ngx.watchlist, ...(d.ngx.dangote || []), ...d.ngx.gainers, ...d.ngx.losers].some((r) => r.symbol === sym) || sym === d.picks.ngx.symbol), 'only shares the dashboard shows');
+  assert.ok(d.bvmac.closes && typeof d.bvmac.closes === 'object');
   assert.deepEqual(sd.history.brvm.map((s) => s.d), ['2026-11-05']);
   assert.deepEqual(sd.history.bvmac.map((s) => s.d), ['2026-11-05']);
   // A second run on the same session replaces it.
@@ -786,18 +792,21 @@ test('dangote-compose: the AI summary, the mood of headlines and X posts, the X 
 // ======================================================================
 // SM-04 · Market brief API
 // ======================================================================
-test('api-build-response: merges both briefs; a missing sub-workflow gives empty fields, not a crash', async () => {
+test('api-build-response: merges the three briefs; a missing sub-workflow gives empty fields, not a crash', async () => {
   const [r] = await runCode('api-build-response', {
     'Run Africa brief': [{ text: 'A1', part: 1, data: { ngx: 1 } }, { text: 'A2', part: 2 }],
     'Run stock picks': [{ text: 'H1', data: { picks: [] } }],
+    'Run Dangote watch': [{ text: 'D1', data: { shares: [] } }],
   });
   assert.deepEqual(r.africa, { html: 'A1\n\nA2', data: { ngx: 1 } });
   assert.deepEqual(r.picks, { html: 'H1', data: { picks: [] } });
+  assert.deepEqual(r.dangote, { html: 'D1', data: { shares: [] } });
   assert.ok(!('halal' in r));
   assert.ok(!Number.isNaN(Date.parse(r.generatedAt)));
   const [empty] = await runCode('api-build-response', { 'Run stock picks': [{ error: 'failed' }] });
   assert.deepEqual(empty.africa, { html: '', data: null });
   assert.deepEqual(empty.picks, { html: '', data: null });
+  assert.deepEqual(empty.dangote, { html: '', data: null });
 });
 
 // ======================================================================
@@ -862,13 +871,15 @@ test('setup: publish reasons (REPLACE_ME keys, missing chat id, https trigger, s
   assert.match(reasons.get('ElKUgro9SMq8kXAo')[0], /^calls an unpublished workflow \(SM-01 · US stock picks/, 'WF-11.2 uses SM-01 as a tool');
   assert.deepEqual(names(setup.publishOrder(items, reasons)), ['SM-02 ·', 'SM-03 ·', 'WF-11.1']);
 
-  // No chat id: the three Telegram briefs wait; SM-04 waits for SM-01 and SM-02 unless they are published already.
+  // No chat id: the three Telegram briefs wait; SM-04 waits for SM-01, SM-02 and SM-03 unless they are published already.
   items = setup.planWorkflows(repo, new Map());
   reasons = setup.publishPlan(items, { credentialIsReal: realExcept(), webhookUrl: '' });
   assert.deepEqual(reasons.get('smDangoteWatch01'), ['TELEGRAM_CHAT_ID not set']);
   assert.ok(reasons.get('ElKUgro9SMq8kXAo').includes('TELEGRAM_CHAT_ID not set'), 'an unlocked bot is never published');
   assert.match(reasons.get('smBriefApi000001')[0], /calls an unpublished workflow/);
   reasons = setup.publishPlan(items, { credentialIsReal: realExcept(), webhookUrl: '', published: new Set(['smHalalPicks0001', 'smAfricaBrief001']) });
+  assert.match(reasons.get('smBriefApi000001')[0], /^calls an unpublished workflow \(SM-03 · Dangote watch/, 'the dashboard also shows the Dangote watch');
+  reasons = setup.publishPlan(items, { credentialIsReal: realExcept(), webhookUrl: '', published: new Set(['smHalalPicks0001', 'smAfricaBrief001', 'smDangoteWatch01']) });
   assert.deepEqual(reasons.get('smBriefApi000001'), []);
 
   // Sub-workflows are published before the workflow that calls them, whatever the file order.

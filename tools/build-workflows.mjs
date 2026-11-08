@@ -420,16 +420,18 @@ function xPosts(w, wfId, x, fromNode, toNode) {
   });
   w.add('Run Africa brief', 'n8n-nodes-base.executeWorkflow', 1.2, [-480, 30], callWf(WF.africa, 'SM-02 · Africa markets brief (NGX, BRVM, BVMAC) → Telegram'), { onError: 'continueRegularOutput', alwaysOutputData: true });
   w.add('Run stock picks', 'n8n-nodes-base.executeWorkflow', 1.2, [-260, 30], callWf(WF.picks, 'SM-01 · US stock picks → Telegram'), { onError: 'continueRegularOutput', alwaysOutputData: true, executeOnce: true });
-  w.add('Build response', 'n8n-nodes-base.code', 2, [-40, 30], codeNode(code('api-build-response')));
-  w.add('Respond', 'n8n-nodes-base.respondToWebhook', 1.1, [180, 30], { respondWith: 'firstIncomingItem', options: { responseCode: 200 } });
+  w.add('Run Dangote watch', 'n8n-nodes-base.executeWorkflow', 1.2, [-40, 30], callWf(WF.dangote, 'SM-03 · Dangote watch (refinery IPO + Dangote shares) → Telegram'), { onError: 'continueRegularOutput', alwaysOutputData: true, executeOnce: true });
+  w.add('Build response', 'n8n-nodes-base.code', 2, [180, 30], codeNode(code('api-build-response')));
+  w.add('Respond', 'n8n-nodes-base.respondToWebhook', 1.1, [400, 30], { respondWith: 'firstIncomingItem', options: { responseCode: 200 } });
   w.link('GET /webhook/market-brief', 'Run Africa brief');
   w.link('Run Africa brief', 'Run stock picks');
-  w.link('Run stock picks', 'Build response');
+  w.link('Run stock picks', 'Run Dangote watch');
+  w.link('Run Dangote watch', 'Build response');
   w.link('Build response', 'Respond');
   w.note(
     'Setup note',
     [-760, -360],
-    '## 🔌 SM-04 · Market brief API\nThe Vercel dashboard calls `GET /webhook/market-brief` with header `X-Brief-Secret`. It runs SM-02 and SM-01 in "return" mode (nothing is sent to Telegram) and answers with both briefs as JSON.\n\n**Setup:** credential **Market brief secret** (Header Auth, name `X-Brief-Secret`, value = the same secret as `BRIEF_SECRET` on Vercel). Each call costs ~30 FMP calls, so the Vercel side caches for 6 hours.',
+    '## 🔌 SM-04 · Market brief API\nThe Vercel dashboard calls `GET /webhook/market-brief` with header `X-Brief-Secret`. It runs SM-02, SM-01 and SM-03 in "return" mode (nothing is sent to Telegram) and answers with the three briefs as JSON.\n\n**Setup:** credential **Market brief secret** (Header Auth, name `X-Brief-Secret`, value = the same secret as `BRIEF_SECRET` on Vercel). Each call costs ~30 FMP calls, so the Vercel side caches for 6 hours.',
     560,
     280,
     4,

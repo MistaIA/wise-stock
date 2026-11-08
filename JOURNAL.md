@@ -6,6 +6,35 @@ Project folder: `2026/Startover/stock-market-n8n/` in the project files. Code: h
 
 ---
 
+## 2026-11-08 · Dashboard: Dangote watch section, small charts, no HTML codes
+
+**Asked by MistaIA** (11:41 UTC), after pasting the live dashboard: the Dangote refinery IPO was missing on the page, there were no charts, and some text showed `&amp;` / `&#39;`. "Yes do those and update with PRs".
+
+### Done (branch `dashboard-dangote-charts`, pull request to `main`)
+
+- **Dangote watch on the dashboard.** SM-04 now also runs SM-03 in "return" mode (on demand: last 72 h, always answers, sends nothing to Telegram) and answers with a third brief, `dangote` (`src/code/api-build-response.js`, `tools/build-workflows.mjs`). SM-03's data carries `ipoNote` (`src/code/dangote-compose.js`). New section "🛢️ Dangote watch" in `vercel/public/index.html`: new-listing banner, AI summary, mood, headlines, X posts, the Dangote shares with trend, the IPO note, the Telegram text.
+- **Charts** (inline SVG, no library, CSP unchanged): a 52-week range bar on each US pick (low, high, where the price is); a trend line per share in the African tables, the BVMAC table, the "To look at" card and the Dangote shares. SM-02 already keeps 10 sessions of closes of the 🌙 shares; it now adds `closes` per market for the shares the page shows (`src/code/africa-build.js`). A line appears from the second session on, so the Trend column fills over the next days (only 🌙 shares have one).
+- **`&amp;` / `&#39;`**: the page writes all data as text (textContent) and decodes the Telegram HTML once, so the page itself shows `&` and `'`. The codes in MistaIA's paste most likely came from copying (the same paste turned table tabs into `&#x9;`). New browser test `tests/dashboard.test.mjs` guards it anyway (fake brief with `& ' < > <script>`).
+- **e2e**: SM-03 now runs first through SM-04, so the test no longer assumes the scheduled run is SM-03's first; it checks that whichever run is first asks the mirror that is down and every later one the second mirror.
+- README: SM-04 row and diagram, dashboard description, tests table, and a Railway note: **after a push that changes `workflows/*.json`, deploy once with `SM_REIMPORT_WORKFLOWS=true`, then delete the variable** (the redeploy alone keeps n8n's old copies).
+
+### How it was tested (8 Nov, cloud container)
+
+| Test | Result |
+|---|---|
+| `node tests/run-tests.mjs` (closes kept for the chart, 3 briefs in the API answer, SM-04 waits for SM-03 to be published) | 42/42 |
+| `tests/validate-workflows.mjs` in the n8n 2.46.6 image | OK |
+| `node tests/dashboard.test.mjs` (fake brief) and with the brief the e2e run saved | all passed; screenshot checked (range bars, Dangote section, no sideways scroll at 375 px) |
+| `node tests/e2e/run-docker-e2e.mjs` (OpenAI) and `E2E_AI=gemini` | E2E OK, both |
+| `node tests/vercel-api.test.mjs` | 9/9 |
+
+### Next
+
+- MistaIA: merge the pull request, then on Railway add `SM_REIMPORT_WORKFLOWS=true`, wait for the deploy, delete it. Vercel redeploys by itself from `main`. The first dashboard load after that takes longer (SM-03 runs too).
+- The Trend column stays empty until SM-02 has run on two sessions on Railway.
+
+---
+
 ## 2026-11-07 · Deploy: n8n on Railway, dashboard on Vercel (steps checked against both docs)
 
 **Asked by MistaIA** (21:47 UTC): "I want to deploy on vercel now".

@@ -62,5 +62,5 @@ if (problems.length) blocks.push(`⚠️ ${esc(problems.join(' · '))}`);
 blocks.push(`<i>${mood ? `Mood and dots: rated ${byAi ? 'by the AI' : 'by keywords (no AI rating today)'}. ` : ''}Information only, not financial advice.</i>`);
 
 const messages = TG.split(blocks);
-const data = { ...f, ai: ai ? { summary, sentiment: rated } : null };
+const data = { ...f, ipoNote: cfg.ipoNote || null, ai: ai ? { summary, sentiment: rated } : null };
 return messages.map((text, i) => ({ json: { text, part: i + 1, parts: messages.length, data: i === 0 ? data : undefined } }));
