@@ -87,6 +87,7 @@ Railway builds the [Dockerfile](Dockerfile) straight from your GitHub repo and r
    DB_POSTGRESDB_USER=${{Postgres.PGUSER}}
    DB_POSTGRESDB_PASSWORD=${{Postgres.PGPASSWORD}}
    N8N_AUTO_PUBLISH=true
+   SM_REIMPORT_WORKFLOWS=true
    N8N_ENCRYPTION_KEY=
    TELEGRAM_BOT_TOKEN=
    TELEGRAM_CHAT_ID=
@@ -103,7 +104,7 @@ Railway builds the [Dockerfile](Dockerfile) straight from your GitHub repo and r
 
 The `${{Postgres.…}}` values link to the database. n8n's address (`N8N_WEBHOOK_URL`, `N8N_EDITOR_BASE_URL`) and `N8N_PROXY_HOPS=1` come from the domain of step 3 by themselves ([docker/entrypoint.sh](docker/entrypoint.sh)); a value you set by hand wins. `PORT=5678` tells Railway which port n8n listens on (its health check uses `PORT`). No volume is needed: everything n8n keeps is in Postgres, and the key is in `N8N_ENCRYPTION_KEY`. Railway stopped reading `railway.json` for new services (it was replaced by its "Infrastructure as Code"), so this repo has none and the health check is the setting of step 3. Every push to `main` deploys again.
 
-**When a push changes the workflow files** (`workflows/*.json`): the redeploy alone keeps n8n's copies. Add the variable `SM_REIMPORT_WORKFLOWS=true`, let it deploy, check the Deploy Logs for `re-imported over the copies` and `published "SM-…"`, then delete the variable (it deploys once more, with nothing re-imported). Edits you made in the n8n editor to those workflows are replaced; what they remember (X mirror, closes) is kept.
+**Workflow updates on Railway:** keep the variable `SM_REIMPORT_WORKFLOWS=true` on the service. Then every start copies the workflow files of the deployed commit over n8n's copies and publishes them again, so a merged change to `workflows/*.json` reaches n8n with the normal deploy (Deploy Logs: `re-imported over the copies` and `published "SM-…"`). What the workflows remember (X mirror, closes) and the credentials are kept. The price: edits made in the n8n editor to these workflows are replaced at the next start, so make changes in the repo. Without the variable, n8n keeps its copies and a changed file is ignored.
 
 ## Keys
 
@@ -133,7 +134,7 @@ The setup's log says which one it uses, for example `AI: Google Gemini, default 
 
 Setup rules (full detail at the top of [tools/first-run-setup.mjs](tools/first-run-setup.mjs)):
 
-- A workflow file is imported only when n8n doesn't have it yet, so your edits in the editor are kept. `SM_REIMPORT_WORKFLOWS=true` for one start re-imports the files over your copies (do it once after an update of the files, then set it back to `false`). What the workflows remember (the X mirror that answered, the closes behind the trend) is kept.
+- A workflow file is imported only when n8n doesn't have it yet, so your edits in the editor are kept. `SM_REIMPORT_WORKFLOWS=true` for one start re-imports the files over your copies (on your PC: once after an update of the files, then back to `false`; on Railway it stays `true`, see C). What the workflows remember (the X mirror that answered, the closes behind the trend) is kept.
 - `TELEGRAM_CHAT_ID` is written into the workflows at import, and also later while a workflow still holds the placeholder.
 - With `N8N_AUTO_PUBLISH=true` (the default), each workflow is published as soon as it can run: its keys are real (not REPLACE_ME; the briefs don't wait for the AI key), it has the chat id, the workflows it calls are published, and for WF-11.2 `N8N_WEBHOOK_URL` is https. The log says why a workflow waits, for example `not published "SM-01 …": missing key: FMP API key`. With `false` you publish in the editor yourself.
 - To get rid of a workflow, archive it in n8n. A workflow you delete is imported again on the next start.
